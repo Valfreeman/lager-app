@@ -1,2 +1,2 @@
 # lager-app
-small test app
+small test app prototype 
