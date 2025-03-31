@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lager Suche</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+    }
+    input {
+      padding: 0.5rem;
+      width: 100%;
+      font-size: 1rem;
+    }
+    ul {
+      margin-top: 1rem;
+      padding-left: 1rem;
+    }
+    li {
+      margin-bottom: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Wahren Suche</h1>
+  <input type="text" id="search" placeholder="Wehlen sie Artikel oder name oder ort!!!">
+  <ul id="results"></ul>
+
+  <script>
+    let data = [];
+    let confirmedQuery = "";
+  
+    // Автоматическая корректировка ввода (например, B2A8 → B2/A8)
+    function normalizeQuery(input) {
+      return input.replace(/^([A-Z]\d)([A-Z]\d)/i, "$1/$2").toLowerCase();
+    }
+  
+    // Отображение результатов
+    function renderResults(query) {
+      const resultsList = document.getElementById("results");
+      resultsList.innerHTML = "";
+  
+      const filtered = data.filter(item => {
+        return Object.values(item).some(field =>
+          String(field).toLowerCase().includes(query)
+        );
+      });
+  
+      filtered.forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = `${item.Ort} / ${item.Artikelnummer} / ${item.Artikelbezeichnung}`;
+        resultsList.appendChild(li);
+      });
+    }
+  
+    // Загрузка данных из Google Apps Script
+    fetch("https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec")
+      .then(res => res.json())
+      .then(json => {
+        data = json;
+        console.log("Загружено товаров:", data.length);
+      })
+      .catch(err => console.error("Ошибка загрузки данных:", err));
+  
+    const searchInput = document.getElementById("search");
+    const resultsList = document.getElementById("results");
+  
+    searchInput.addEventListener("input", () => {
+      const query = normalizeQuery(searchInput.value);
+      if (!query) return;
+  
+      renderResults(query);
+    });
+  
+    searchInput.addEventListener("focus", () => {
+      searchInput.value = "";
+    });
+  
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        confirmedQuery = normalizeQuery(searchInput.value);
+        renderResults(confirmedQuery);
+        searchInput.blur(); // убираем каретку
+      }
+    });
+  </script>
+  
+</body>
+</html>
