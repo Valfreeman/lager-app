@@ -1,91 +1,96 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lager Suche</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-    }
-    input {
-      padding: 0.5rem;
-      width: 100%;
-      font-size: 1rem;
-    }
-    ul {
-      margin-top: 1rem;
-      padding-left: 1rem;
-    }
-    li {
-      margin-bottom: 0.5rem;
-    }
-  </style>
-</head>
-<body>
-  <h1>Wahren Suche</h1>
-  <input type="text" id="search" placeholder="Wehlen sie Artikel oder name oder ort!!!">
-  <ul id="results"></ul>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lager Suche</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-100 min-h-screen p-4">
+    <div class="max-w-xl mx-auto bg-white rounded-2xl shadow p-6 relative">
+      <!-- Заголовок и меню -->
+      <div class="flex justify-between items-center mb-4">
+        <h1 class="text-2xl font-bold text-center w-full">🔍 Wahren Suche</h1>
+        <div class="absolute top-4 right-4">
+          <button onclick="toggleMenu()" class="text-gray-600 text-2xl">⋮</button>
+          <div id="menu" class="absolute right-0 mt-2 w-40 bg-white border rounded-xl shadow-lg hidden z-20">
+            <a href="https://valfreeman.github.io/lager-app/" class="block px-4 py-2 hover:bg-gray-100">🔍 Ware Suche</a>
+          </div>
+        </div>
+      </div>
 
-  <script>
-    let data = [];
-    let confirmedQuery = "";
-  
-    // Автоматическая корректировка ввода (например, B2A8 → B2/A8)
-    function normalizeQuery(input) {
-      return input.replace(/^([A-Z]\d)([A-Z]\d)/i, "$1/$2").toLowerCase();
-    }
-  
-    // Отображение результатов
-    function renderResults(query) {
-      const resultsList = document.getElementById("results");
-      resultsList.innerHTML = "";
-  
-      const filtered = data.filter(item => {
-        return Object.values(item).some(field =>
-          String(field).toLowerCase().includes(query)
-        );
-      });
-  
-      filtered.forEach(item => {
-        const li = document.createElement("li");
-        li.textContent = `${item.Ort} / ${item.Artikelnummer} / ${item.Artikelbezeichnung}`;
-        resultsList.appendChild(li);
-      });
-    }
-  
-    // Загрузка данных из Google Apps Script
-    fetch("https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec")
-      .then(res => res.json())
-      .then(json => {
-        data = json;
-        console.log("Загружено товаров:", data.length);
-      })
-      .catch(err => console.error("Ошибка загрузки данных:", err));
-  
-    const searchInput = document.getElementById("search");
-    const resultsList = document.getElementById("results");
-  
-    searchInput.addEventListener("input", () => {
-      const query = normalizeQuery(searchInput.value);
-      if (!query) return;
-  
-      renderResults(query);
-    });
-  
-    searchInput.addEventListener("focus", () => {
-      searchInput.value = "";
-    });
-  
-    searchInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        confirmedQuery = normalizeQuery(searchInput.value);
-        renderResults(confirmedQuery);
-        searchInput.blur(); // убираем каретку
+      <!-- Поле поиска -->
+      <div class="relative">
+        <input
+          type="text"
+          id="search"
+          placeholder="Wehlen sie Artikel oder Name oder Ort..."
+          class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+        />
+      </div>
+
+      <!-- Результаты -->
+      <ul id="results" class="mt-6 space-y-2 text-gray-800 text-sm"></ul>
+    </div>
+
+    <script>
+      let data = [];
+      let confirmedQuery = "";
+
+      function normalizeQuery(input) {
+        return input.replace(/^([A-Z]\d)([A-Z]\d)/i, "$1/$2").toLowerCase();
       }
-    });
-  </script>
-  
-</body>
+
+      function renderResults(query) {
+        const resultsList = document.getElementById("results");
+        resultsList.innerHTML = "";
+
+        const filtered = data.filter(item => {
+          return Object.values(item).some(field =>
+            String(field).toLowerCase().includes(query)
+          );
+        });
+
+        filtered.forEach(item => {
+          const li = document.createElement("li");
+          li.className = "bg-blue-50 border border-blue-200 rounded-xl p-3";
+          li.textContent = `${item.Ort} / ${item.Artikelnummer} / ${item.Artikelbezeichnung}`;
+          resultsList.appendChild(li);
+        });
+      }
+
+      fetch("https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec")
+        .then(res => res.json())
+        .then(json => {
+          data = json;
+          console.log("Загружено товаров:", data.length);
+        })
+        .catch(err => console.error("Ошибка загрузки данных:", err));
+
+      const searchInput = document.getElementById("search");
+
+      searchInput.addEventListener("input", () => {
+        const query = normalizeQuery(searchInput.value);
+        if (!query) return;
+        renderResults(query);
+      });
+
+      searchInput.addEventListener("focus", () => {
+        searchInput.value = "";
+      });
+
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          confirmedQuery = normalizeQuery(searchInput.value);
+          renderResults(confirmedQuery);
+          searchInput.blur();
+        }
+      });
+
+      function toggleMenu() {
+        const menu = document.getElementById("menu");
+        menu.classList.toggle("hidden");
+      }
+    </script>
+  </body>
 </html>
