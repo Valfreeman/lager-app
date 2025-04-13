@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neuen Auftrag erstellen</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f3f4f6;
+      margin: 0;
+      padding: 20px;
+    }
+    .white-container {
+      background-color: white;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+    h1 {
+      text-align: center;
+    }
+    .menu-container {
+      position: relative;
+    }
+    .menu-toggle {
+      background: none;
+      font-size: 24px;
+      border: none;
+      cursor: pointer;
+      width: 48px;
+      height: 48px;
+    }
+    .dropdown {
+      position: absolute;
+      right: 0;
+      top: 36px;
+      background: white;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      display: none;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .dropdown button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: none;
+      background: none;
+      text-align: left;
+      cursor: pointer;
+    }
+    .top-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .top-buttons .row {
+      display: flex;
+      width: 100%;
+      gap: 10px;
+    }
+    .top-buttons button {
+      flex: 1;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      cursor: pointer;
+      background-color: #ececff;
+    }
+    .wide-button {
+      width: 100%;
+    }
+    .search-area input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+    .item, .selected-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .controls button {
+      margin-left: 6px;
+    }
+    .final-buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }
+    .toggle-section {
+      display: none;
+    }
+    .highlight-block {
+      background: #f0f0f0;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="white-container">
+    <h1>Neuen Auftrag erstellen</h1>
+
+    <div class="top-buttons">
+      <div class="row">
+        <button onclick="toggleSection('random')">🔁 Zufälliger Auftrag</button>
+        <button onclick="toggleSection('edit')">⚙️</button>
+        <div class="menu-container">
+          <button class="menu-toggle" onclick="toggleDropdown()">⋮</button>
+          <div class="dropdown" id="dropdownMenu">
+            <button onclick="window.location.href='index.html'">Waren Suche</button>
+            <button onclick="alert('Du bist hier')">Bestellungen</button>
+            <button onclick="alert('Im prozess!')">Warenannahme</button>
+          </div>
+        </div>
+      </div>
+      <button class="wide-button" onclick="toggleSection('manual')">Bestellung selbst zusammenstellen</button>
+    </div>
+
+    <div id="random" class="toggle-section highlight-block">
+        <strong>Zufälliger Auftrag</strong><br>
+        <label for="levelSelect">Auftragsgröße:</label>
+        <select id="levelSelect">
+          <option value="leicht">Leicht (kleine Menge)</option>
+          <option value="mittel" selected>Mittel</option>
+          <option value="schwer">Schwer (volle Box)</option>
+        </select>
+        <button style="margin-top: 10px;" onclick="generateRandomOrder()">Zufälligen Auftrag generieren</button>
+      </div>
+
+    <div id="edit" class="toggle-section highlight-block">
+      <strong>Konfigurierter Auftrag</strong><br>
+      Hier wird das Interface für den konfigurierbaren Auftrag erscheinen.
+    </div>
+
+    <div id="manual" class="toggle-section">
+      <div class="search-area">
+        <input type="text" id="searchInput" placeholder="Artikelnummer, Ort oder Name" oninput="renderItems(this.value)" />
+        <div id="itemList"></div>
+      </div>
+      <h3>Ausgewählte Artikel</h3>
+      <div id="selectedItems"></div>
+      <div class="final-buttons">
+        <button onclick="reserveItems()">📦 Artikel reservieren</button>
+        <button onclick="clearCart()">🧹 Alles entfernen</button>
+      </div>
+      <div id="finalOrderBlock" style="display:none; margin-top:30px; padding:20px; border:2px solid #4caf50; border-radius:12px; background:#e8f5e9;">
+        <h2>📦 Ihre Bestellung</h2>
+        <div id="finalOrderList"></div>
+        <div style="margin-top:20px; display:flex; gap:10px;">
+          <button onclick="cancelOrder()">❌ Bestellung abbrechen</button>
+          <button onclick="confirmShipment()">✅ Versand bestätigen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let dataFromSheet = [];
+  let selectedItems = [];
+
+  function toggleDropdown() {
+    const menu = document.getElementById("dropdownMenu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  }
+
+  function toggleSection(id) {
+    ['random', 'edit', 'manual'].forEach(sec => {
+      document.getElementById(sec).style.display = (sec === id) ? 'block' : 'none';
+    });
+  }
+
+  fetch("https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec")
+    .then(res => res.json())
+    .then(data => {
+      console.log("✅ DATA LOADED:", data);
+      dataFromSheet = data;
+    });
+
+  function renderItems(query) {
+    const cleanedQuery = (query || '').toLowerCase().replace(/[\/]/g, '');
+    const itemList = document.getElementById('itemList');
+    itemList.innerHTML = '';
+
+    if (!cleanedQuery) return;
+
+    const filtered = dataFromSheet.filter(row => {
+      const ort = (row.Ort || '').toString().toLowerCase().replace(/[\/]/g, '');
+      const artikelnummer = (row.Artikelnummer || '').toString().toLowerCase();
+      const name = (row.Artikelbezeichnung || '').toString().toLowerCase();
+
+      return (
+        ort.includes(cleanedQuery) ||
+        artikelnummer.includes(cleanedQuery) ||
+        name.includes(cleanedQuery)
+      );
+    });
+
+    filtered.forEach(row => {
+      const ort = row.Ort;
+      const nummer = row.Artikelnummer;
+      const name = row.Artikelbezeichnung;
+
+      const div = document.createElement('div');
+      div.className = 'item';
+      div.innerHTML = `
+        <span>${ort} / ${nummer} / ${name}</span>
+        <div class="controls">
+          <button onclick='addToCart("${nummer}", "${ort} / ${nummer} / ${name}")'>+</button>
+        </div>
+      `;
+      itemList.appendChild(div);
+    });
+  }
+
+  function addToCart(nummer, display) {
+    const qty = prompt("Wie viele Stück?");
+    const menge = parseInt(qty);
+
+    if (!qty || isNaN(menge) || menge <= 0) return;
+
+    const existing = selectedItems.find(item => item.nummer === nummer);
+    if (existing) {
+      existing.menge += menge;
+    } else {
+      selectedItems.push({ nummer, display, menge });
+    }
+
+    updateCart();
+    document.getElementById('searchInput').value = '';
+    document.getElementById('itemList').innerHTML = '';
+  }
+
+  function updateCart() {
+    const container = document.getElementById("selectedItems");
+    container.innerHTML = selectedItems.map((item, index) => `
+      <div class="selected-item">
+        <span>${item.display} (${item.menge} St.)</span>
+        <div class="controls">
+          <button onclick="editItem(${index})">✏️</button>
+          <button onclick="removeItem(${index})">🗑️</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function editItem(index) {
+    const newQty = prompt("Neues Menge eingeben:", selectedItems[index].menge);
+    const parsed = parseInt(newQty);
+    if (parsed > 0) {
+      selectedItems[index].menge = parsed;
+      updateCart();
+    }
+  }
+
+  function removeItem(index) {
+    if (confirm("Diesen Artikel aus dem Warenkorb entfernen?")) {
+      selectedItems.splice(index, 1);
+      updateCart();
+    }
+  }
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+  import {
+    getFirestore, collection, getDocs, doc, getDoc, updateDoc, setDoc
+  } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCFnoSTWvGZ5YJWfIfTJeVCW4Hy4aEzYKY",
+    authDomain: "lager-inventar.firebaseapp.com",
+    projectId: "lager-inventar",
+    storageBucket: "lager-inventar.appspot.com",
+    messagingSenderId: "584324962905",
+    appId: "1:584324962905:web:57c49b5c471387af528aef"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window.db = db;
+
+  const enableReservation = true;
+  const infiniteMode = false;
+
+  let userID = localStorage.getItem("user_id");
+  if (!userID) {
+    userID = "user_" + Math.random().toString(36).substring(2, 10);
+    localStorage.setItem("user_id", userID);
+  }
+
+  // 🧠 Восстановление корзины при загрузке страницы
+  async function loadUserBasket() {
+    const basketRef = doc(db, "user_basket", userID);
+    const basketSnap = await getDoc(basketRef);
+    if (!basketSnap.exists()) return;
+
+    const userBasket = basketSnap.data();
+    const newItems = [];
+
+    for (const artikelnummer in userBasket) {
+      const menge = parseInt(userBasket[artikelnummer]) || 0;
+      if (menge <= 0) continue;
+
+      const artikelRef = doc(db, "lager", artikelnummer);
+      const artikelSnap = await getDoc(artikelRef);
+      if (!artikelSnap.exists()) continue;
+
+      const data = artikelSnap.data();
+      const display = `${data.Ort} / ${artikelnummer} / ${data.Artikelbezeichnung}`;
+
+      newItems.push({ nummer: artikelnummer, display, menge });
+    }
+
+    if (newItems.length > 0) {
+      selectedItems = newItems;
+      updateCart();
+      showFinalOrder();
+      console.log("🔁 Reservierung wiederhergestellt:", selectedItems);
+    }
+  }
+
+  // 🔁 Загрузка корзины сразу после старта
+  loadUserBasket();
+
+  // 🔄 Зарезервировать товары
+  window.reserveItems = async function () {
+    if (!enableReservation) {
+      alert("⚠️ Reservierung deaktiviert");
+      return;
+    }
+
+    const updates = [];
+    const basket = {};
+    const insufficientStock = [];
+
+    for (const item of selectedItems) {
+      const artikelRef = doc(db, "lager", item.nummer);
+      const artikelSnap = await getDoc(artikelRef);
+      if (!artikelSnap.exists()) {
+        alert(`❌ ${item.nummer} nicht gefunden.`);
+        continue;
+      }
+
+      const data = artikelSnap.data();
+      const currentMenge = parseInt(data.Menge) || 0;
+      const currentReserviert = parseInt(data.Reserviert) || 0;
+      const gewuenscht = parseInt(item.menge);
+
+      if (currentMenge < gewuenscht && !infiniteMode) {
+        insufficientStock.push(`${item.display} (nur ${currentMenge} verfügbar)`);
+        continue;
+      }
+
+      updates.push(updateDoc(artikelRef, {
+        Menge: currentMenge - gewuenscht,
+        Reserviert: currentReserviert + gewuenscht
+      }));
+
+      basket[item.nummer] = gewuenscht;
+    }
+
+    if (insufficientStock.length > 0) {
+      alert("🚫 Nicht genug Bestand:\n" + insufficientStock.join("\n"));
+      return;
+    }
+
+    await Promise.all([
+      ...updates,
+      setDoc(doc(db, "user_basket", userID), basket, { merge: true })
+    ]);
+
+    alert("✅ Reserviert!");
+    showFinalOrder();
+  }
+
+  function showFinalOrder() {
+    const final = document.getElementById('finalOrderBlock');
+    const list = document.getElementById('finalOrderList');
+    list.innerHTML = selectedItems.map(i => `<div>${i.display} — ${i.menge} St.</div>`).join('');
+    final.style.display = 'block';
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  }
+
+  window.cancelOrder = async function () {
+    if (!enableReservation) {
+      alert("🚫 Nur Simulation");
+      selectedItems = [];
+      updateCart();
+      document.getElementById('finalOrderBlock').style.display = 'none';
+      return;
+    }
+
+    const basketRef = doc(db, "user_basket", userID);
+    const basketSnap = await getDoc(basketRef);
+    const userBasket = basketSnap.exists() ? basketSnap.data() : {};
+    const updates = [];
+
+    for (const artikelnummer in userBasket) {
+      const menge = parseInt(userBasket[artikelnummer]) || 0;
+      const artikelRef = doc(db, "lager", artikelnummer);
+      const artikelSnap = await getDoc(artikelRef);
+      if (!artikelSnap.exists()) continue;
+
+      const data = artikelSnap.data();
+      updates.push(updateDoc(artikelRef, {
+        Menge: (parseInt(data.Menge) || 0) + menge,
+        Reserviert: Math.max((parseInt(data.Reserviert) || 0) - menge, 0)
+      }));
+    }
+
+    updates.push(setDoc(basketRef, {}, { merge: false }));
+
+    await Promise.all(updates);
+    alert("❌ Bestellung abgebrochen");
+
+    selectedItems = [];
+    updateCart();
+    document.getElementById('finalOrderBlock').style.display = 'none';
+  }
+
+  window.confirmShipment = async function () {
+    if (!enableReservation) {
+      alert("📦 Versand simuliert");
+      selectedItems = [];
+      updateCart();
+      document.getElementById('finalOrderBlock').style.display = 'none';
+      return;
+    }
+
+    const basketRef = doc(db, "user_basket", userID);
+    const basketSnap = await getDoc(basketRef);
+    const userBasket = basketSnap.exists() ? basketSnap.data() : {};
+    const updates = [];
+
+    for (const artikelnummer in userBasket) {
+      const menge = parseInt(userBasket[artikelnummer]) || 0;
+      const artikelRef = doc(db, "lager", artikelnummer);
+      const artikelSnap = await getDoc(artikelRef);
+      if (!artikelSnap.exists()) continue;
+
+      const data = artikelSnap.data();
+      updates.push(updateDoc(artikelRef, {
+        Reserviert: Math.max((parseInt(data.Reserviert) || 0) - menge, 0)
+      }));
+    }
+
+    updates.push(setDoc(basketRef, {}, { merge: false }));
+
+    await Promise.all(updates);
+    alert("✅ Versand bestätigt");
+
+    selectedItems = [];
+    updateCart();
+    document.getElementById('finalOrderBlock').style.display = 'none';
+  }
+</script>
+<script>
+    const boxSizes = {
+      klein: { maxL: 12, maxB: 12, maxH: 12, maxVolumen: 1728 },
+      mittel: { maxL: 20, maxB: 27, maxH: 18, maxVolumen: 9720 },
+      gross: { maxL: 37, maxB: 45, maxH: 18, maxVolumen: 29970 }
+    };
+  
+    function parseFloatSafe(str) {
+      if (typeof str === "number") return str;
+      if (!str) return 0;
+      return parseFloat(String(str).replace(",", "."));
+    }
+  
+    function passtInBox(row, box) {
+      const l = parseFloatSafe(row.Länge);
+      const b = parseFloatSafe(row.Breite);
+      const h = parseFloatSafe(row.Höhe);
+      const v = parseFloatSafe(row.Volumen);
+      const oversize = String(row.Oversize || '').toLowerCase() === 'true';
+  
+      return (
+        !oversize &&
+        l <= box.maxL &&
+        b <= box.maxB &&
+        h <= box.maxH &&
+        v > 0 &&
+        v <= box.maxVolumen
+      );
+    }
+  
+    function generateRandomOrder() {
+      const level = document.getElementById('levelSelect').value;
+      let box;
+      if (level === 'leicht') box = boxSizes.klein;
+      else if (level === 'mittel') box = boxSizes.mittel;
+      else box = boxSizes.gross;
+  
+      const passende = dataFromSheet.filter(row => passtInBox(row, box));
+  
+      const selected = [];
+      let totalVol = 0;
+      const maxVol = box.maxVolumen * 0.9;
+      const maxItems = 14;
+  
+      while (passende.length && totalVol < maxVol && selected.length < maxItems) {
+        const index = Math.floor(Math.random() * passende.length);
+        const row = passende.splice(index, 1)[0];
+        const menge = Math.floor(Math.random() * 2) + 1;
+        const v = parseFloatSafe(row.Volumen) * menge;
+        if ((totalVol + v) > maxVol) break;
+  
+        selected.push({
+          nummer: row.Artikelnummer,
+          display: `${row.Ort} / ${row.Artikelnummer} / ${row.Artikelbezeichnung}`,
+          menge: menge
+        });
+        totalVol += v;
+      }
+  
+      if (!selected.length) {
+        alert("Keine passenden Artikel gefunden oder zu großer Gesamtvolumen.");
+        return;
+      }
+  
+      selectedItems = selected;
+      updateCart();
+      showFinalOrder();
+    }
+  
+    function clearCart() {
+      if (confirm("Wirklich alles entfernen?")) {
+        selectedItems = [];
+        updateCart();
+        document.getElementById('searchInput').value = '';
+        document.getElementById('finalOrderBlock').style.display = 'none';
+      }
+    }
+  </script>
+
+</body>
+</html>
