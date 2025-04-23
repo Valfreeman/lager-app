@@ -118,42 +118,51 @@
 
     <div class="top-buttons">
       <div class="row">
-        <button onclick="toggleSection('random')">🔁 Zufälliger Auftrag</button>
+        <button id="randomButton">🔁 Zufälliger Auftrag</button>
         <button onclick="toggleSection('edit')">⚙️</button>
         <div class="menu-container">
           <button class="menu-toggle" onclick="toggleDropdown()">⋮</button>
           <div class="dropdown" id="dropdownMenu">
             <button onclick="window.location.href='index.html'">Waren Suche</button>
-            <button onclick="window.location.href='https://valfreeman.github.io/lager-app/bestellungen.html'">Bestellungen</button>
-            <button onclick="window.location.href='https://valfreeman.github.io/lager-app/warenannahme.html'">Warenannahme</button>
+            <button onclick="window.location.href='bestellungen.html'">Bestellungen</button>
+            <button onclick="window.location.href='warenannahme.html'">Warenannahme</button>
           </div>
         </div>
       </div>
       <button class="wide-button" onclick="toggleSection('manual')">Bestellung selbst zusammenstellen</button>
     </div>
 
-    <div id="random" class="toggle-section highlight-block">
-        <strong>Zufälliger Auftrag</strong><br>
-        <label for="levelSelect">Auftragsgröße:</label>
-        <select id="levelSelect">
-          <option value="leicht">Leicht (kleine Menge)</option>
-          <option value="mittel" selected>Mittel</option>
-          <option value="schwer">Schwer (volle Box)</option>
-        </select>
-        <button style="margin-top: 10px;" onclick="generateRandomOrder()">Zufälligen Auftrag generieren</button>
-      </div>
-
     <div id="edit" class="toggle-section highlight-block">
-      <strong>Konfigurierter Auftrag</strong><br>
-      Hier wird das Interface für den konfigurierbaren Auftrag erscheinen.
-    </div>
+  <strong>🎛️ Zufallsauftrag konfigurieren</strong><br><br>
+
+  <label for="storytellerSelect">Erzähler:</label>
+  <select id="storytellerSelect" onchange="onStorytellerChange()">
+    <option value="klassisch" selected>Klassischer Kommissionierer</option>
+    <option value="strenger">Strenger Logistiker</option>
+    <option value="chaotisch">Chaotischer Bot</option>
+      
+  </select><br><br>
+
+  <label for="smartLevelSelect">Auftrags-Schwierigkeit:</label>
+  <select id="smartLevelSelect">
+    <option value="leicht">Leicht</option>
+    <option value="mittel" selected>Mittel</option>
+    <option value="schwer">Schwer</option>
+    <option value="super">Super Schwer</option>
+  
+</select><br><br>
+
+  <button onclick="generateSmartOrder()">📦 Auftrag generieren</button>
+
+</div>
+
 
     <div id="manual" class="toggle-section">
       <div class="search-area">
         <input type="text" id="searchInput" placeholder="Artikelnummer, Ort oder Name" oninput="renderItems(this.value)" />
         <div id="itemList"></div>
       </div>
-      <h3>Ausgewählte Artikel</h3>
+      <h3 id="orderHeader">Ausgewählte Artikel</h3>
       <div id="selectedItems"></div>
       <div class="final-buttons">
         <button onclick="reserveItems()">📦 Artikel reservieren</button>
@@ -180,10 +189,10 @@
   }
 
   function toggleSection(id) {
-    ['random', 'edit', 'manual'].forEach(sec => {
-      document.getElementById(sec).style.display = (sec === id) ? 'block' : 'none';
-    });
-  }
+  ['edit', 'manual'].forEach(sec => {
+    document.getElementById(sec).style.display = (sec === id) ? 'block' : 'none';
+  });
+}
 
   fetch("https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec")
     .then(res => res.json())
@@ -548,6 +557,212 @@
       }
     }
   </script>
+
+
+<script>
+function onStorytellerChange() {
+  const storyteller = document.getElementById("storytellerSelect").value;
+  const levelSelect = document.getElementById("smartLevelSelect");
+  levelSelect.disabled = (storyteller === "chaotisch");
+}
+
+function generateSmartOrder() {
+  const storyteller = document.getElementById("storytellerSelect").value;
+  let level = document.getElementById("smartLevelSelect").value;
+
+  if (storyteller === "chaotisch") {
+    level = getRandomSchwierigkeit(); // Игнорируем выбранную сложность
+    generateChaoticOrder(level);
+  } else {
+    generateClassicalOrder(level);
+  }
+
+  // Переход в секцию заказа и скролл
+  toggleSection('manual');
+  setTimeout(() => {
+    const manual = document.getElementById("manual");
+    document.getElementById("orderHeader").scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 200);
+}
+
+function getRandomSchwierigkeit() {
+  const rand = Math.random();
+  if (rand < 0.05) return "super";
+  const opts = ["leicht", "mittel", "schwer"];
+  return opts[Math.floor(Math.random() * opts.length)];
+}
+
+function generateChaoticOrder(level) {
+  const box = boxSizes.gross;
+  const passende = dataFromSheet.filter(row => passtInBox(row, box));
+  const selected = [];
+  let totalVol = 0;
+  const maxVol = box.maxVolumen * 0.9;
+  const minVol = box.maxVolumen * 0.25;
+
+  while (passende.length && totalVol < maxVol) {
+    const index = Math.floor(Math.random() * passende.length);
+    const row = passende.splice(index, 1)[0];
+    const menge = Math.floor(Math.random() * 4) + 1;
+    const v = parseFloatSafe(row.Volumen) * menge;
+    if ((totalVol + v) > maxVol) break;
+
+    selected.push({
+      nummer: row.Artikelnummer,
+      display: `${row.Ort} / ${row.Artikelnummer} / ${row.Artikelbezeichnung}`,
+      menge: menge
+    });
+    totalVol += v;
+  }
+
+  if (totalVol < minVol) {
+    alert("🚫 Keine ausreichend chaotische Auswahl gefunden.");
+    return;
+  }
+
+  selectedItems = selected;
+  updateCart();
+  showFinalOrder();
+}
+
+function generateClassicalOrder(level) {
+  let selected = [];
+  let totalVol = 0;
+
+  // LEICHT
+  if (level === "leicht") {
+    const box = Math.random() < 0.5 ? boxSizes.klein : boxSizes.mittel;
+    const passende = dataFromSheet.filter(row => passtInBox(row, box));
+    const bigItems = passende.filter(r => parseFloatSafe(r.Volumen) > 3000);
+    const smallItems = passende.filter(r => parseFloatSafe(r.Volumen) <= 3000);
+    const maxVol = box.maxVolumen * 0.9;
+
+    if (bigItems.length === 0) {
+      alert("❌ Kein großer Artikel gefunden.");
+      return;
+    }
+
+    const big = bigItems[Math.floor(Math.random() * bigItems.length)];
+    const bigVol = parseFloatSafe(big.Volumen);
+    selected.push({
+      nummer: big.Artikelnummer,
+      display: `${big.Ort} / ${big.Artikelnummer} / ${big.Artikelbezeichnung}`,
+      menge: 1
+    });
+    totalVol += bigVol;
+
+    const numAdd = 4 + Math.floor(Math.random() * 3); // 4–6
+    while (smallItems.length && selected.length < numAdd + 1 && totalVol < maxVol) {
+      const i = Math.floor(Math.random() * smallItems.length);
+      const row = smallItems.splice(i, 1)[0];
+      const menge = Math.floor(Math.random() * 3) + 1;
+      const vol = parseFloatSafe(row.Volumen) * menge;
+      if ((totalVol + vol) > maxVol) break;
+
+      selected.push({
+        nummer: row.Artikelnummer,
+        display: `${row.Ort} / ${row.Artikelnummer} / ${row.Artikelbezeichnung}`,
+        menge: menge
+      });
+      totalVol += vol;
+    }
+  }
+
+  // MITTEL
+  if (level === "mittel") {
+    const box = Math.random() < 0.5 ? boxSizes.mittel : boxSizes.gross;
+    const passende = dataFromSheet.filter(row => passtInBox(row, box));
+    const shuffled = passende.sort(() => 0.5 - Math.random());
+    const numItems = 8 + Math.floor(Math.random() * 3); // 8–10
+    const maxVol = box.maxVolumen * 0.9;
+
+    for (let i = 0; i < shuffled.length && selected.length < numItems; i++) {
+      const row = shuffled[i];
+      const menge = 5 + Math.floor(Math.random() * 5); // 5–9
+      const vol = parseFloatSafe(row.Volumen) * menge;
+      if ((totalVol + vol) > maxVol) continue;
+
+      selected.push({
+        nummer: row.Artikelnummer,
+        display: `${row.Ort} / ${row.Artikelnummer} / ${row.Artikelbezeichnung}`,
+        menge: menge
+      });
+      totalVol += vol;
+    }
+
+    if (selected.length < 8) {
+      alert("❌ Nicht genug passende Artikel für mittel.");
+      return;
+    }
+  }
+
+  // SCHWER
+  if (level === "schwer") {
+    const box = Math.random() < 0.5 ? boxSizes.mittel : boxSizes.gross;
+    const passende = dataFromSheet.filter(row => passtInBox(row, box));
+    const shuffled = passende.sort(() => 0.5 - Math.random());
+    const numItems = 13 + Math.floor(Math.random() * 2); // 13–14
+    const maxVol = box.maxVolumen * 0.9;
+
+    for (let i = 0; i < shuffled.length && selected.length < numItems; i++) {
+      const row = shuffled[i];
+      const menge = 5 + Math.floor(Math.random() * 8); // 5–12
+      const vol = parseFloatSafe(row.Volumen) * menge;
+      if ((totalVol + vol) > maxVol) continue;
+
+      selected.push({
+        nummer: row.Artikelnummer,
+        display: `${row.Ort} / ${row.Artikelnummer} / ${row.Artikelbezeichnung}`,
+        menge: menge
+      });
+      totalVol += vol;
+    }
+
+    if (selected.length < 10) {
+      alert("❌ Nicht genug Artikel für schwer gefunden.");
+      return;
+    }
+  }
+  // SuperSCHWER
+  if (level === "super") {
+  const box = Math.random() < 0.5 ? boxSizes.mittel : boxSizes.gross;
+  const passende = dataFromSheet.filter(row => passtInBox(row, box));
+  const shuffled = passende.sort(() => 0.5 - Math.random());
+  const numItems = 15;
+  const maxVol = box.maxVolumen * 0.92;
+  const selected = [];
+  let totalVol = 0;
+
+  for (let i = 0; i < shuffled.length && selected.length < numItems; i++) {
+    const row = shuffled[i];
+    const menge = 3 + Math.floor(Math.random() * 18); // 3–20
+    const vol = parseFloatSafe(row.Volumen) * menge;
+    if ((totalVol + vol) > maxVol) continue;
+
+    selected.push({
+      nummer: row.Artikelnummer,
+      display: `${row.Ort} / ${row.Artikelnummer} / ${row.Artikelbezeichnung}`,
+      menge: menge
+    });
+    totalVol += vol;
+  }
+
+  if (selected.length < 13) {
+    alert("❌ Nicht genug Artikel für super schwer.");
+    return;
+  }
+
+  selectedItems = selected;
+  updateCart();
+  showFinalOrder();
+}
+  selectedItems = selected;
+  updateCart();
+  showFinalOrder();
+}
+
+
+</script>
 
 </body>
 </html>
