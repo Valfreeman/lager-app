@@ -154,7 +154,7 @@
     </div>
 
         <!-- ➕ 7. Модалка Menge -->
-        <div id="mengeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div id="mengeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
         <!-- Контент модалки -->
       </div>
   
@@ -172,7 +172,7 @@
 
   <script type="module">
     // авто менялка версии
-    window.appVersion = " 5.95"; // ← Меняешь только тут
+    window.appVersion = " 5.97"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -866,17 +866,6 @@ window.unreserveItem = async function (artikelnummer) {
   }
 };
 
-// разрезервировалка по артикулу
-window.unreserveItemByArtikelnummer = async function (artikelnummer) {
-  const index = window.appState.selectedItems.findIndex(
-    (el) => el.Artikelnummer === artikelnummer && el.status === "reserved"
-  );
-  if (index !== -1) {
-    await window.unreserveItem(index);
-  }
-};
-
-
 // Удаляет все товары из корзины, кроме тех, у которых статус 'reserved'
 window.clearUnavailable = function () {
   const modal = document.getElementById("confirmationModals");
@@ -942,7 +931,7 @@ cart.innerHTML = sortedItems
             <div class="flex gap-1 mt-1">
              ${
                  item.status === 'reserved'
-             ? `<button onclick="window.unreserveItem('${item.Artikelnummer}')" title="Reservierung aufheben" class="text-yellow-600 text-lg">🚫</button>`
+             ? `<button onclick="unreserveItem('${item.Artikelnummer}')" title="Reservierung aufheben" class="text-yellow-600 text-lg">🚫</button>`
              : `
              <button onclick="window.editItem('${item.Artikelnummer}')" title="Bearbeiten" class="text-blue-600 text-lg">✏️</button>
              <button onclick="window.showDeleteConfirm('${item.Artikelnummer}')" title="Löschen" class="text-red-600 text-lg">🗑️</button>
@@ -979,8 +968,9 @@ window.editItem = function(artikelnummer) {
         <p class="text-sm text-gray-500">${item.Artikelnummer}</p>
         <p class="text-lg text-gray-800 font-semibold">${item.Artikelbezeichnung}</p>
       </div>
-      <input id="mengeInput" type="number" min="1" value="${item.Menge}"
-             class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-center text-lg font-medium" />
+      <input id="mengeInput" type="number" min="1" value="1"
+       inputmode="numeric" enterkeyhint="done" autocomplete="off"
+       class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-center text-lg font-medium" />
       <div class="flex justify-between pt-2 px-2 gap-2">
         <button onclick="window.closeMengeModal()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
         <button onclick="window.saveEditedItem()" class="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">OK</button>
@@ -991,13 +981,24 @@ window.editItem = function(artikelnummer) {
   modal.classList.remove("hidden");
 
   setTimeout(() => {
-    const input = document.getElementById("mengeInput");
-    if (input) {
-      input.focus();
-      input.select();
-    }
-  }, 100);
-};
+  const input = document.getElementById("mengeInput");
+  const modal = document.getElementById("mengeModal");
+
+  if (input && modal) {
+    input.addEventListener("focus", () => {
+      if (!modal.classList.contains("modal-bottom")) {
+        modal.classList.add("modal-bottom");
+      }
+    });
+
+    input.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (modal.contains(document.activeElement)) return; // если фокус ушёл внутри модалки — не убираем
+        modal.classList.remove("modal-bottom");
+      }, 200);
+    });
+  }
+}, 100);
 
 
 window.hideDeleteConfirm = function () {
@@ -1094,6 +1095,7 @@ window.confirmClearUnavailable = function () {
 };
 
 
+//=============================================================================
     // ========================
     // 📦 JS 5. Заполняемость коробки
     // ========================
@@ -1227,6 +1229,8 @@ window.calculateBoxVolumes = function () {
   };
 };
 */
+
+
 //===================================================
 // Функция обновления блока с заполненностью коробки
 //===================================================
@@ -1584,7 +1588,7 @@ window.confirmAddReservedItem = async function () {
   }
 
   // 2. Снять резерв через уже существующую функцию
-  await window.unreserveItemByArtikelnummer(existingReservedItem.Artikelnummer);
+  await window.unreserveItem(existingReservedItem.Artikelnummer);
 
   // 3. Обновить количество
   existingReservedItem.Menge = Number(oldMenge) + Number(menge);
