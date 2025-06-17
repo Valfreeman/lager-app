@@ -155,7 +155,7 @@
 
   <script type="module">
     // авто менялка версии
-    window.appVersion = " 5.88"; // ← Меняешь только тут
+    window.appVersion = " 5.89"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -1007,6 +1007,66 @@ window.saveEditedItem = function () {
   // ==================================================== 
   // Функция расчёта объёма и выбора коробки
   // ==================================================== 
+  // Новый метод: считает заполняемость одновременно для gross и mittel
+window.calculateBoxVolumes = function () {
+  // Актуальные размеры коробок (можешь подставить актуальные значения)
+  const boxSizes = {
+    mittel: { name: "Mittel Box", maxVolumen: 10260 },
+    gross: { name: "Große Box", maxVolumen: 31635 }
+  };
+
+  const items = window.appState.selectedItems || [];
+
+  // Общий объём товаров
+  let totalVol = 0;
+  let missingVolumen = [];
+  for (const item of items) {
+    let v = Number(item.Volumen);
+    if (!v) {
+      const l = Number(item.Länge || item.Länge_cm || item.L);
+      const b = Number(item.Breite || item.Breite_cm || item.B);
+      const h = Number(item.Höhe || item.Höhe_cm || item.H);
+      if (l && b && h) {
+        v = l * b * h;
+      } else {
+        missingVolumen.push(item);
+        continue;
+      }
+    }
+    totalVol += v * Number(item.Menge || 1);
+  }
+
+  // Проверка — есть ли товары без объёма
+  if (missingVolumen.length > 0) {
+    alert("Не удалось определить объём у " + missingVolumen.length + " позиций! Смотри консоль для деталей.");
+    console.warn("Товары без объёма:", missingVolumen);
+  }
+
+  // 95% объёма — доступно для товаров
+  const mittelMax = boxSizes.mittel.maxVolumen * 0.95;
+  const grossMax = boxSizes.gross.maxVolumen * 0.95;
+
+  // Считаем проценты заполненности
+  const mittelPercent = mittelMax ? Math.round((totalVol / mittelMax) * 100) : 0;
+  const grossPercent = grossMax ? Math.round((totalVol / grossMax) * 100) : 0;
+
+  return {
+    mittel: {
+      boxName: boxSizes.mittel.name,
+      percent: Math.min(mittelPercent, 100),
+      totalVol,
+      maxVolumeForBox: mittelMax
+    },
+    gross: {
+      boxName: boxSizes.gross.name,
+      percent: Math.min(grossPercent, 100),
+      totalVol,
+      maxVolumeForBox: grossMax
+    }
+  };
+};
+  
+/*
   window.calculateCurrentBoxVolume = function () {
   // 1. Коробки и их объёмы
   const boxSizes = {
@@ -1072,7 +1132,7 @@ window.saveEditedItem = function () {
     maxVolumeForBox
   };
 };
-
+*/
 //===================================================
 // Функция обновления блока с заполненностью коробки
 //===================================================
@@ -1091,17 +1151,26 @@ window.updateBoxInfo = function () {
   const infoBlock = document.getElementById("boxSummary");
   if (!infoBlock) return;
 
-  const result = window.calculateCurrentBoxVolume();
-  infoBlock.textContent = `📦 ${result.boxName} – ${result.percent}% voll`;
+  const result = window.calculateBoxVolumes();
 
+  // Показываем оба индикатора (gross и mittel)
+  infoBlock.innerHTML =
+    `📦 ${result.gross.boxName} – ${result.gross.percent}% voll<br>` +
+    `<span style="color:#a3a3a3;">📦 ${result.mittel.boxName} – ${result.mittel.percent}% voll</span>`;
+
+  // --- "Запланированный" расчёт тоже выводим двумя строками, если есть ---
   const initialBox = document.getElementById("initialBoxInfo");
   if (!initialBox) return;
 
   const initial = window.appState.initialVolumeInfo;
-  if (initial && initial.boxName && typeof initial.percent === "number") {
-    initialBox.textContent = `📦 ${initial.boxName} – ${initial.percent}% geplant`;
-    initialBox.classList.remove("text-gray-400");
-    initialBox.style.color = "#a3a3a3";
+  if (
+    initial &&
+    typeof initial.gross === "object" &&
+    typeof initial.mittel === "object"
+  ) {
+    initialBox.innerHTML =
+      `📦 ${initial.gross.boxName} – ${initial.gross.percent}% geplant<br>` +
+      `<span style="color:#bdbdbd;">📦 ${initial.mittel.boxName} – ${initial.mittel.percent}% geplant</span>`;
   } else {
     initialBox.textContent = "";
   }
@@ -1202,6 +1271,27 @@ if (cartIsEmpty) {
 window.addMoreItems = function () {
   // Пока только скроллит к поиску, потом будет подключён генератор
   const searchInput = document.getElementById("searchInput");
+
+  searchInput.addEventListener("focus", function () {
+  // Скроллим родительский контейнер так, чтобы поиск оказался сверху с отступом
+  setTimeout(() => {
+    // Находим основной контейнер (body или ближайший .mx-auto .bg-white и т.п.)
+    const mainContainer = document.getElementById("mainCardContainer");
+    if (!mainContainer) {
+      // Фоллбек — скроллим сам input
+      searchInput.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.scrollBy(0, -24); // Мелкий отступ сверху (24px)
+      return;
+    }
+    // Скроллим контейнер так, чтобы строка поиска была чуть ниже верха
+    const rect = searchInput.getBoundingClientRect();
+    const mainRect = mainContainer.getBoundingClientRect();
+    const scrollTop = window.scrollY + rect.top - mainRect.top - 24; // 24px — отступ сверху
+    window.scrollTo({ top: scrollTop, behavior: "smooth" });
+  }, 80); // 80ms — даём время клаве открыться (на мобиле)
+});
+
+
   if (searchInput) {
     searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setTimeout(() => searchInput.focus(), 400);
