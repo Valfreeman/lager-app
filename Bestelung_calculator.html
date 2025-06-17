@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title id="pageTitle">📦 1LagerApp</title>
+<title id="pageTitle">📦 LagerApp</title>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -155,7 +155,7 @@
 
   <script type="module">
     // авто менялка версии
-    window.appVersion = " 5.89"; // ← Меняешь только тут
+    window.appVersion = " 5.9"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -1658,6 +1658,15 @@ document.addEventListener("DOMContentLoaded", function() {
         authBlock?.classList.add("hidden");
         registerBlock?.classList.add("hidden");
         mainUI?.classList.remove("hidden");
+        // Специальный костыль: делаем программный фокус-расфокус для поля поиска
+        setTimeout(() => {
+        const searchInput = document.getElementById("searchInput");
+        if (searchInput) {
+            searchInput.blur(); // Снимаем фокус (если вдруг что)
+            searchInput.focus(); // Снова фокусируем (клава должна появиться)
+        }
+        }, 400); // 400ms — подожди, можно увеличить до 600-800 если не срабатывает с первого раза
+
       } else {
         authBlock?.classList.remove("hidden");
         registerBlock?.classList.add("hidden"); // Регистрация только по ручному клику
