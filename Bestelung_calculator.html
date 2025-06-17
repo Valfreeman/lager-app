@@ -12,7 +12,7 @@
     @media (max-width: 600px) {
       .modal-bottom {
         top: auto !important;
-        bottom: 0 !important;
+        bottom: env(safe-area-inset-bottom, 8px) !important;
         left: 0;
         right: 0;
         margin: auto;
