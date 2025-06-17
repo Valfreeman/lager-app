@@ -8,6 +8,21 @@
 <title id="pageTitle">📦 LagerApp</title>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
+<style>
+    @media (max-width: 600px) {
+      .modal-bottom {
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0;
+        right: 0;
+        margin: auto;
+        transform: none !important;
+        max-width: 96vw;
+        border-radius: 24px 24px 0 0;
+        /* Можно добавить background, box-shadow, padding по вкусу */
+      }
+    }
+    </style>
 <body class="bg-gray-100 text-gray-800">
 <!-- 💠 Основной контейнер -->
 <div id="mainCardContainer" class="relative z-10 max-w-xl mx-auto bg-white rounded-2xl shadow p-4 mt-6 space-y-6">
@@ -155,7 +170,7 @@
 
   <script type="module">
     // авто менялка версии
-    window.appVersion = " 5.91"; // ← Меняешь только тут
+    window.appVersion = " 5.93"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -430,6 +445,22 @@ document.addEventListener("keydown", function (e) {
     console.warn("📷 QR-Scanner пока не реализован");
     };
     const searchInput = document.getElementById("searchInput");
+    //выравнивалка поисковую строку
+    if (searchInput) {
+        searchInput.addEventListener("click", function () {
+            setTimeout(() => {
+            // Скроллим так, чтобы строка поиска была ~32px ниже верхней границы экрана
+            const rect = searchInput.getBoundingClientRect();
+            const absoluteY = window.scrollY + rect.top;
+            window.scrollTo({
+                top: absoluteY - 32, // 32px — желаемый отступ сверху
+                behavior: "smooth"
+            });
+            }, 50);
+        });
+        }
+
+
     const suggestionsBox = document.getElementById("suggestions");
     const suggestionsList = document.getElementById("suggestionsList");
 
@@ -1339,6 +1370,19 @@ window.addMoreItems = function () {
   }
   return;
 }
+// При фокусе на Menge — модалка "прилипает" к низу.
+const mengeInput = document.getElementById("mengeInput");
+
+
+if (mengeInput && mengeModal) {
+  mengeInput.addEventListener("focus", () => {
+    mengeModal.classList.add("modal-bottom");
+  });
+  mengeInput.addEventListener("blur", () => {
+    setTimeout(() => mengeModal.classList.remove("modal-bottom"), 150); // задержка для красоты закрытия
+  });
+}
+
 
   // Если открыта модалка подтверждения
   if (confirmModal && !confirmModal.classList.contains("hidden")) {
