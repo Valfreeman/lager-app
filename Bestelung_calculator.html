@@ -158,7 +158,7 @@
 
   <script type="module">
     // авто менялка версии
-    window.appVersion = " 6.04"; // ← Меняешь только тут
+    window.appVersion = " 6.05"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -1013,6 +1013,14 @@ window.editItem = function(artikelnummer) {
 `;
 
   modal.classList.remove("hidden");
+  setTimeout(() => {
+  const input = document.getElementById("mengeInput");
+  if (input) {
+    input.focus();
+    input.select();
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}, 200);
 
 };
 
@@ -1426,15 +1434,6 @@ window.addMoreItems = function () {
     input.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }, 200); // чуть больше задержка для iOS
-
-// 🔁 iOS: иногда требуется повторный фокус
-setTimeout(() => {
-  const input = document.getElementById("mengeInput");
-  if (input && document.activeElement !== input) {
-    input.focus();
-    input.select();
-  }
-}, 500);
 
 
 };
