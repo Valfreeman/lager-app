@@ -8,21 +8,6 @@
 <title id="pageTitle">📦 LagerApp</title>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
 </head>
-<style>
-    @media (max-width: 600px) {
-      .modal-bottom {
-        top: auto !important;
-        bottom: env(safe-area-inset-bottom, 8px) !important;
-        left: 0;
-        right: 0;
-        margin: auto;
-        transform: none !important;
-        max-width: 96vw;
-        border-radius: 24px 24px 0 0;
-        /* Можно добавить background, box-shadow, padding по вкусу */
-      }
-    }
-    </style>
 <body class="bg-gray-100 text-gray-800">
 <!-- 💠 Основной контейнер -->
 <div id="mainCardContainer" class="relative z-10 max-w-xl mx-auto bg-white rounded-2xl shadow p-6 mt-2 space-y-6">
@@ -154,7 +139,8 @@
     </div>
 
         <!-- ➕ 7. Модалка Menge -->
-        <div id="mengeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50">
+        <div id="mengeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-start pt-[40vh] z-50">
+
         <!-- Контент модалки -->
       </div>
   
@@ -172,7 +158,7 @@
 
   <script type="module">
     // авто менялка версии
-    window.appVersion = " 5.97"; // ← Меняешь только тут
+    window.appVersion = " 6.03"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -886,13 +872,62 @@ window.clearUnavailable = function () {
   modal.classList.remove("hidden");
   window.appState.modalOpen = true;
 };
+//=============================================================================
+// Генерация LieferscheinNummer: LS-TAGMONATJAHR-XYZ
+//=============================================================================
+window.generateLieferscheinNummer = function () {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = String(now.getFullYear()).slice(-2);
+  const random = String(Math.floor(Math.random() * 900 + 100)); // 100–999
 
-// Заглушка для отправки заказа (реализуем позже)
-window.sendOrder = function () {
-  alert('Заказ отправлен! (заглушка)');
+  return `LS-${day}${month}${year}-${random}`;
+};
+
+//=============================================================================
+// отправки заказа (реализуем )
+//=============================================================================
+window.sendOrder = async function () {
+  const user = window.currentUser;
+  const uid = user?.uid || "unbekannt";
+
+  const lieferscheinNummer = window.generateLieferscheinNummer();
+
+  const versendeteArtikel = (window.appState.selectedItems || []).filter(
+    (item) => item.status === "reserved"
+  ).map(item => ({
+    Artikelnummer: item.Artikelnummer,
+    Menge: item.Menge
+  }));
+
+  const docRef = window.doc(window.db, "lieferscheine", lieferscheinNummer);
+  await window.setDoc(docRef, {
+    lieferscheinNummer,
+    user: uid,
+    createdAt: new Date(),
+    status: "versendet",
+    items: versendeteArtikel
+  });
+
+  // Удаляем user_cart
+  if (uid !== "unbekannt") {
+    const cartRef = window.doc(window.db, "user_cart", uid);
+    await window.setDoc(cartRef, { items: [] }); // или window.deleteDoc(cartRef);
+  }
+
+  // Чистим интерфейс
+  window.appState.selectedItems = [];
+  window.renderCart();
+  window.updateCartButtons([]);
+
+  // Показываем сообщение
+  alert(`📦 Отправка завершена!\nIhr Lieferschein: ${lieferscheinNummer}`);
+};
+
   // Здесь будет отправка в Firestore
   // После отправки можно очистить корзину или перевести все в статус "отправлено"
-};
+
 
 //==========================
 //  Создание карточек
@@ -962,7 +997,8 @@ window.editItem = function(artikelnummer) {
   window.appState.selectedItem = item;
 
   modal.innerHTML = `
-    <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2">
+    <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2"
+    style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% - 100px));">
       <h2 class="text-xl font-bold">Menge bearbeiten</h2>
       <div class="text-left px-2">
         <p class="text-sm text-gray-500">${item.Artikelnummer}</p>
@@ -980,25 +1016,6 @@ window.editItem = function(artikelnummer) {
 
   modal.classList.remove("hidden");
 
-  setTimeout(() => {
-  const input = document.getElementById("mengeInput");
-  const modal = document.getElementById("mengeModal");
-
-  if (input && modal) {
-    input.addEventListener("focus", () => {
-      if (!modal.classList.contains("modal-bottom")) {
-        modal.classList.add("modal-bottom");
-      }
-    });
-
-    input.addEventListener("blur", () => {
-      setTimeout(() => {
-        if (modal.contains(document.activeElement)) return; // если фокус ушёл внутри модалки — не убираем
-        modal.classList.remove("modal-bottom");
-      }, 200);
-    });
-  }
-}, 100);
 };
 
 window.hideDeleteConfirm = function () {
@@ -1385,7 +1402,8 @@ window.addMoreItems = function () {
   window.appState.selectedItem = item;
 
   modal.innerHTML = `
-    <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2">
+    <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2"
+        style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, calc(-50% - 100px));">
       <h2 class="text-xl font-bold">Artikel hinzufügen</h2>
       <div class="text-left px-2">
         <p class="text-sm text-gray-500">${item.Artikelnummer}</p>
@@ -1400,30 +1418,30 @@ window.addMoreItems = function () {
     </div>
   `;
 
+ 
   modal.classList.remove("hidden");
 
   setTimeout(() => {
-    const input = document.getElementById("mengeInput");
-    if (input) {
-      input.focus();
-      input.select();
-    }
-  }, 100);
+  const input = document.getElementById("mengeInput");
+  if (input) {
+    input.focus();
+    input.select();
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}, 200); // чуть больше задержка для iOS
+
+// 🔁 iOS: иногда требуется повторный фокус
+setTimeout(() => {
+  const input = document.getElementById("mengeInput");
+  if (input && document.activeElement !== input) {
+    input.focus();
+    input.select();
+  }
+}, 500);
 
 
-  setTimeout(() => {
-    const input = document.getElementById("mengeInput");
-    const modal = document.getElementById("mengeModal");
-    if (input && modal) {
-      input.addEventListener("focus", () => {
-        modal.classList.add("modal-bottom");
-      });
-      input.addEventListener("blur", () => {
-        setTimeout(() => modal.classList.remove("modal-bottom"), 150);
-      });
-    }
-  }, 120);
 };
+
     window.closeMengeModal = function () {
     const modal = document.getElementById("mengeModal");
     if (modal) {
@@ -1452,16 +1470,6 @@ window.addMoreItems = function () {
 }
 // При фокусе на Menge — модалка "прилипает" к низу.
 const mengeInput = document.getElementById("mengeInput");
-
-
-if (mengeInput && mengeModal) {
-  mengeInput.addEventListener("focus", () => {
-    mengeModal.classList.add("modal-bottom");
-  });
-  mengeInput.addEventListener("blur", () => {
-    setTimeout(() => mengeModal.classList.remove("modal-bottom"), 150); // задержка для красоты закрытия
-  });
-}
 
 
   // Если открыта модалка подтверждения
