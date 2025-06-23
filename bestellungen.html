@@ -87,7 +87,7 @@
             </div>
           </div>
           <button id="openQRButton" onclick="window.openQRScanner()" class="w-full bg-gray-200 text-black py-2 rounded-xl hover:bg-gray-300">
-            📷 QR-Scanner (в разработке)
+            📷 QR-Scanner (in der Entwicklung)
           </button>
         </section>
 
@@ -159,7 +159,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.14"; // ← Меняешь только тут
+    window.appVersion = " 6.15"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -464,15 +464,15 @@ document.addEventListener("keydown", function (e) {
       modal.innerHTML = `
         <div class="flex items-center justify-center min-h-screen">
           <div class="bg-white rounded-2xl p-6 w-80 shadow-xl text-center mx-2 border-2 border-blue-200">
-            <h2 class="text-xl font-bold mb-3">Корзина не пуста!</h2>
+            <h2 class="text-xl font-bold mb-3">Warenkorb ist nicht leer!</h2>
             <div class="text-lg text-gray-800 mb-4">
-              Сгенерировать новый заказ?<br>
-              <span class="text-xs text-gray-500">Старые товары будут удалены.</span>
+              Neue Bestellung generieren?<br>
+              <span class="text-xs text-gray-500">Die alten Artikel werden entfernt.</span>
             </div>
             <div class="flex flex-col gap-2">
-              <button onclick="window.generateSmartOrder(true)" class="px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600">Перезаписать</button>
-              <button onclick="window.generateSmartOrder(false)" class="px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">Добавить к корзине</button>
-              <button onclick="window.hideDeleteConfirm()" class="px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Отмена</button>
+              <button onclick="window.generateSmartOrder(true)" class="px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600">Überschreiben</button>
+              <button onclick="window.generateSmartOrder(false)" class="px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">Zum Warenkorb hinzufügen</button>
+              <button onclick="window.hideDeleteConfirm()" class="px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
             </div>
           </div>
         </div>
@@ -2236,7 +2236,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <div id="globalLoadingOverlay" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-60 transition-opacity duration-300 hidden">
     <div class="rounded-2xl bg-white/80 px-6 py-8 shadow-2xl flex flex-col items-center">
       <div class="animate-spin h-10 w-10 mb-4 border-4 border-blue-500 border-t-transparent rounded-full"></div>
-      <div class="text-lg font-semibold text-gray-800">Загрузка...</div>
+      <div class="text-lg font-semibold text-gray-800">Loading...</div>
       <div class="text-sm text-gray-500 mt-2" id="globalLoadingStatus"></div>
     </div>
   </div>
