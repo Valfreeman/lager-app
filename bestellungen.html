@@ -159,7 +159,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.15"; // ← Меняешь только тут
+    window.appVersion = " 6.17"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -270,9 +270,11 @@ window.toggleMenu = function () {
   // ========================
   // 🔒 JS 1. Авторизация
   // ========================
+  // === Глобальный флаг "уходить в минус" по складу ===
+    window.infiniteMode = true; // true — включено (можно уходить в минус), false — обычный режим
 
   window.appState = window.appState || {};
-       //=============================================================================
+    //=============================================================================
     // === глобальный наблюдалк
     //=============================================================================
     Object.defineProperty(window.appState, 'selectedItems', {
@@ -656,6 +658,7 @@ if (filledPercent < 90 && draft.length < 12) {
   window.appState.selectedItems = draft;
 
   window.renderCart?.();
+  window.updateCartButtons?.(window.appState.selectedItems);
   window.renderActionButtons?.();
 };
 
@@ -990,19 +993,21 @@ const actionBlock = document.getElementById("actionButtonsBlock");
     cartItem.stock = stockItem ? Number(stockItem.Menge) : 0;
 
     if (stockItem) {
-        // Получаем объект Reserviert
-        const reserviertObj = stockItem.Reserviert && typeof stockItem.Reserviert === "object"
-        ? { ...stockItem.Reserviert }
-        : {};
-        const uid = window.currentUser?.uid || "testuid";
-        const oldReserve = Number(reserviertObj[uid]) || 0;
-        // Доступно для резервирования: остаток + своя бронь
-        const available = Number(stockItem.Menge) + oldReserve;
-        if (available >= cartItem.Menge) {
-        cartItem.status = 'reserved';
-        } else {
-        cartItem.status = 'unavailable';
-        }
+    // Получаем объект Reserviert
+    const reserviertObj = stockItem.Reserviert && typeof stockItem.Reserviert === "object"
+      ? { ...stockItem.Reserviert }
+      : {};
+    const uid = window.currentUser?.uid || "testuid";
+    const oldReserve = Number(reserviertObj[uid]) || 0;
+    // Доступно для резервирования: остаток + своя бронь
+    const available = Number(stockItem.Menge) + oldReserve;
+
+    // === Новая логика: если бесконечный режим — резерв всегда разрешён ===
+    if (window.infiniteMode || available >= cartItem.Menge) {
+      cartItem.status = 'reserved';
+    } else {
+      cartItem.status = 'unavailable';
+    }
     } else {
         cartItem.status = 'unavailable';
     }
@@ -1029,8 +1034,10 @@ const actionBlock = document.getElementById("actionButtonsBlock");
       const newReserve = Number(item.Menge);
       const diff = newReserve - oldReserve;
 
-      // 3. Вычитаем только diff!
-      const neueMenge = (Number(artikelData.Menge) || 0) - diff;
+      // 3. Вычитаем только diff! В режиме бесконечности можно уходить в минус
+    const neueMenge = window.infiniteMode
+    ? (Number(artikelData.Menge) || 0) - diff
+    : Math.max((Number(artikelData.Menge) || 0) - diff, 0);
 
       // 4. Перезаписываем резерв
       if (newReserve > 0) {
@@ -1385,6 +1392,7 @@ cart.innerHTML = sortedItems
   )
   .join("");
   window.updateBoxInfo();
+  window.updateCartButtons(window.appState.selectedItems);
 };
 
 //редактировать количество
