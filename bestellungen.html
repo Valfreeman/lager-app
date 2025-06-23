@@ -159,7 +159,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.17"; // ← Меняешь только тут
+    window.appVersion = " 6.20"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -1196,6 +1196,8 @@ window.unreserveItem = async function (artikelnummer) {
   }
 };
 
+
+
 // Удаляет все товары из корзины, кроме тех, у которых статус 'reserved'
 window.clearUnavailable = function () {
   const modal = document.getElementById("confirmationModals");
@@ -1583,7 +1585,7 @@ window.calculateBoxVolumes = function () {
 
   // Проверка — есть ли товары без объёма
   if (missingVolumen.length > 0) {
-    alert("Не удалось определить объём у " + missingVolumen.length + " позиций! Смотри консоль для деталей.");
+   alert("Не удалось определить объём у " + missingVolumen.length + " позиций! Смотри консоль для деталей.");
     console.warn("Товары без объёма:", missingVolumen);
   }
 
@@ -1771,7 +1773,7 @@ window.updateCartButtons = function (cartItems) {
   // === 3. Кнопки — первый ряд
   let row1 = `
   <button class="flex-1 bg-gray-200 text-black py-2 rounded-xl hover:bg-gray-300"
-    onclick="window.addMoreItems()">➕ Automatisch auffüllen</button>
+    onclick="window.autoFillCart()">➕ Automatisch auffüllen</button>
   <button class="flex-1 ${anyUnreserved ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'} py-2 rounded-xl"
     ${anyUnreserved ? 'onclick="window.clearUnavailable()"' : 'disabled'}>🗑️ Unreservierte Artikel entfernen</button>
 `;
@@ -2215,6 +2217,86 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 });
+//=============================================================================
+// === ➕ Automatisch auffüllen автоматическое дополнение
+//=============================================================================
+window.autoFillCart = function () {
+  const MAX_ITEMS = 12;
+  const MIN_FILL = 0.95;
+  const MAX_FILL = 1.10;
+
+  let current = [...(window.appState.selectedItems || [])];
+  const currentArtikels = new Set(current.map(i => i.Artikelnummer));
+
+  const BOXES = {
+    mittel: { name: "Mittel Box", max: 9720 },
+    gross: { name: "Große Box", max: 31635 }
+  };
+
+  let totalVol = current.reduce((sum, x) => sum + (Number(x.Volumen) || 0) * Number(x.Menge || 1), 0);
+
+  // === Автоматически определяем нужную коробку по объёму
+  function pickBoxByVolume(vol) {
+    if (vol <= BOXES.mittel.max * 0.95) return "mittel";
+    return "gross";
+  }
+
+  const boxType = pickBoxByVolume(totalVol);
+  const boxVol = BOXES[boxType].max;
+
+  let fill = totalVol / boxVol;
+
+  if (fill >= MIN_FILL) {
+    alert(`Корзина уже заполнена на ${Math.round(fill * 100)}% (${BOXES[boxType].name})!`);
+    return;
+  }
+
+  const allItems = window.artikelListe || [];
+  const candidates = allItems.filter(
+  row =>
+    !currentArtikels.has(row.Artikelnummer) &&
+    Number(row.Volumen) > 0
+);
+  const shuffled = candidates.sort(() => Math.random() - 0.5);
+
+  let i = 0;
+  while (fill < MIN_FILL && current.length < MAX_ITEMS && i < shuffled.length) {
+  const row = shuffled[i];
+  // Автоматически подбираем количество в зависимости от объёма товара:
+  let menge = 1;
+  const v = Number(row.Volumen) || 0;
+  if (v > 3000) menge = 1;           // очень крупный — только 1
+  else if (v > 800) menge = 2;       // средний — 2
+  else if (v > 300) menge = 3;       // мелкий — 3
+  else menge = 4;                    // очень мелкий — 4
+
+  // Не выходим за границы коробки!
+  let addVol = v * menge;
+  // Если перебор, уменьшаем количество до допустимого
+  while (addVol > 0 && (totalVol + addVol) / boxVol > MAX_FILL) {
+    menge--;
+    addVol = v * menge;
+  }
+  if (menge < 1) { i++; continue; }
+
+  current.push({
+    Artikelnummer: row.Artikelnummer,
+    Artikelbezeichnung: row.Artikelbezeichnung,
+    Ort: row.Ort,
+    Volumen: row.Volumen,
+    Menge: menge,
+    status: "unverified"
+  });
+
+  totalVol += addVol;
+  fill = totalVol / boxVol;
+  i++;
+}
+
+  window.appState.selectedItems = current;
+  window.renderCart();
+};
+  // Позже здесь будет логика подбора товаров до полной коробки.
 
 
 </script>
