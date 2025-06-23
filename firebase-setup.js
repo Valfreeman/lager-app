@@ -18,7 +18,9 @@ import {
   collection,
   query,
   where,
-  getDocs
+  getDocs,
+  updateDoc,
+  deleteField 
 } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
 
 import { 
@@ -56,6 +58,9 @@ window.collection = collection;
 window.query = query;
 window.where = where;
 window.getDocs = getDocs;
+window.isFirebaseReady = true;
+window.updateDoc = updateDoc;
+window.deleteField = deleteField;
 
 window.appState = {
   artikelListe: [],
