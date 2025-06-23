@@ -1,291 +1,1412 @@
-
 <!DOCTYPE html>
 <html lang="de">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Warenannahme</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title id="pageTitle">📦 Warenannahme</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+  <script type="module" src="firebase-setup.js"></script>
 
-    <!-- Firebase App (Core) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
-    <!-- Firebase Firestore -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
-    <script>
-      const firebaseConfig = {
-        apiKey: "AIzaSyCynw5TJyH70PJO7Qp0LZcYCvS3sWzEsYM",
-        authDomain: "lager-inventar.firebaseapp.com",
-        projectId: "lager-inventar",
-        storageBucket: "lager-inventar.firebasestorage.app",
-        messagingSenderId: "22040990419",
-        appId: "1:22040990419:web:bed8e7b5f655eb389f3a26",
-        measurementId: "G-RNHH3CCKP9"
-      };
-      firebase.initializeApp(firebaseConfig);
-      const db = firebase.firestore();
-    </script>
-  </head>
-  <body class="bg-gray-100 min-h-screen p-4" onclick="hideSuggestions(event)">
-    <div class="max-w-xl mx-auto bg-white rounded-2xl shadow p-6 relative min-h-[calc(100vh-100px)]">
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-2xl font-bold text-center w-full">📦 Warenannahme</h1>
-        <div class="absolute top-4 right-4">
-          <button onclick="toggleMenu()" class="text-gray-600 text-2xl">⋮</button>
-          <div id="menu" class="absolute right-0 mt-2 w-48 bg-white border rounded-xl shadow-lg hidden z-20">
-            <a href="https://valfreeman.github.io/lager-app/" class="block px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
-              <span class="text-lg">🔍</span>
-              <span>Ware Suche</span>
-            </a>
-            <a href="https://valfreeman.github.io/lager-app/bestellungen.html" class="block px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
-              <span class="text-lg">📄</span>
-              <span>Bestellungen</span>
-            </a>
-            <a href="https://valfreeman.github.io/lager-app/warenannahme.html" class="block px-4 py-2 hover:bg-gray-100 flex items-center gap-2">
-              <span class="text-lg">📦</span>
-              <span>Warenannahme</span>
-            </a>
+  <style>
+    #notificationArea {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      padding: 10px 24px;
+      min-width: 200px;
+      max-width: 90vw;
+      border-radius: 16px;
+      font-size: 1rem;
+      box-shadow: 0 2px 18px 2px rgba(0,0,0,0.08);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s;
+      text-align: center;
+    }
+    #notificationArea.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    </style>
+    
+</head>
+<body class="bg-gray-100 text-gray-800">
+<!-- 💠 0. Основной контейнер -->
+<div id="mainCardContainer" class="relative z-10 max-w-xl mx-auto bg-white rounded-2xl shadow p-6 mt-2 space-y-6">
+
+  <!-- 🧭 0. Хедер и Навигация -->
+  <div id="loginHeader" class="relative z-50 flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold text-center w-full">📦 Warenannahme v<span id="ver"></span></h1>
+    <div class="absolute top-0 right-0">
+      <button class="text-gray-600 text-2xl" onclick="window.toggleMenu()">⋮</button>
+      <div class="absolute right-0 mt-2 w-48 bg-white border rounded-xl shadow-lg hidden z-60" id="menu">
+        <button class="block w-full text-left px-4 py-2 hover:bg-gray-100" onclick="window.location.href='index.html'">🔍 Waren Suche</button>
+        <button class="block w-full text-left px-4 py-2 hover:bg-gray-100" onclick="window.location.href='bestellungen.html'">📄 Bestellungen</button>
+        <button class="block w-full text-left px-4 py-2 hover:bg-gray-100" onclick="window.location.href='Warenannahme.html'">📦 Warenannahme</button>
+        <button class="block w-full text-left px-4 py-2 hover:bg-gray-100" id="loginButton" onclick="window.toggleAuthForm()">🔐 Anmelden</button>
+        <button class="block w-full text-left px-4 py-2 hover:bg-gray-100 hidden" id="logoutButton" onclick="window.logout()">🚪 Abmelden</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔒 1. Авторизация -->
+  <section id="authBlock" class="space-y-4">
+    <input id="email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded-xl mb-2" />
+    <input id="password" type="password" placeholder="Passwort" class="w-full px-4 py-2 border rounded-xl mb-2" />
+    <label class="flex items-center mb-2 ml-2 ">
+      <input id="rememberMe" type="checkbox" class="mr-2" />
+      Eingeloggt bleiben
+    </label>
+    <div class="h-2"></div>
+    <button onclick="window.login()" class="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">
+      Einloggen
+    </button>
+    <div class="text-center text-sm text-blue-600 cursor-pointer hover:underline"
+         id="switchAuthForms" onclick="window.toggleAuthForm()">
+      Noch kein Konto? Registrieren
+    </div>
+    <p id="authStatus" class="mt-2 text-sm text-gray-500"></p>
+  </section>
+  <!-- Скрытый блок регистрации -->
+  <section id="registerBlock" class="space-y-4 hidden">
+    <input id="reg_email" type="email" placeholder="Email" class="w-full px-4 py-2 border rounded-xl mb-2" />
+    <input id="reg_password" type="password" placeholder="Passwort" class="w-full px-4 py-2 border rounded-xl mb-2" />
+    <input id="reg_code" type="text" placeholder="Firmen-Code" class="w-full px-4 py-2 border rounded-xl mb-2" />
+    <div class="h-2"></div>
+    <button onclick="window.doRegister()" class="w-full bg-green-500 text-white py-2 rounded-xl hover:bg-green-600">
+      Registrieren
+    </button>
+    <div class="mt-2 text-center text-sm text-blue-600 cursor-pointer hover:underline"
+         onclick="window.toggleAuthForm()">
+      Bereits registriert? Einloggen
+    </div>
+    <p id="registerStatus" class="mt-2 text-sm text-gray-500"></p>
+  </section>
+  <!--
+  //=============================================================================
+  главное меню
+  //=============================================================================
+  -->
+  <section id="mainUI" class="hidden space-y-6">
+    <!-- 
+    //=============================================================================
+         2. Поиск и QR 
+     //=============================================================================
+     -->
+     <section id="searchBlock" class="mb-4">
+        <div class="relative z-40">
+          <h2 class="text-xl font-bold mb-2" id="searchTitle">🔍 Artikel suchen & hinzufügen</h2>
+          <input id="searchInput" type="text" placeholder="Artikelnummer oder Name oder Ort..." class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400" />
+          <div id="suggestions" class="absolute top-full left-0 w-full rounded-xl z-50 bg-white mt-2 hidden">
+            <ul id="suggestionsList" class="max-h-60 overflow-y-auto"></ul>
+          </div>
+        </div>
+        <!-- Кнопка Lieferschein geben (всегда под поиском) -->
+        <button id="lieferscheinModeBtn" class="text-xs bg-gray-100 hover:bg-blue-100 px-2 py-1 rounded mt-2" onclick="window.toggleLieferscheinMode()">📄 Lieferschein geben</button>
+        
+        <!-- Lieferschein input-блок, скрыт по умолчанию -->
+        <div id="lieferscheinInputBlock" class="hidden mb-4">
+            <div class="flex flex-row gap-2 items-center">
+              <input id="lieferscheinInput" type="text" placeholder="Lieferschein-Nummer (z. B. LS-180625-001)" class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400" />
+              <button id="showLieferscheinBtn" class="bg-blue-500 text-white px-4 py-2 rounded-xl hover:bg-blue-600 whitespace-nowrap" onclick="window.loadLieferschein()">anzeigen</button>
+            </div>
+            <button id="backToSearchBtn" class="text-xs bg-gray-100 hover:bg-blue-100 px-2 py-1 rounded mt-2" onclick="window.toggleLieferscheinMode()">
+                <span class="mr-1">←</span> Zurück zur Artikelsuche
+              </button>
+          </div>
+      </section>
+      
+      
+      
+
+    <!-- 3. Результаты поиска (оставить пустым — интеграция позже) -->
+    <section id="searchResultsBlock"></section>
+
+    <!-- 4. Корзина -->
+    <section id="cartBlock" class="space-y-2">
+      <h2 class="text-xl font-bold mb-2">🧾 Ausgewählte Artikel</h2>
+      <div id="cartItems"><p class="text-gray-500 italic">Noch keine Artikel</p></div>
+    </section>
+
+     <!-- 4.1 Чек бокс Ich habe alle Artikel und Mengen sorgfältig geprüft -->
+     <label class="flex items-center mb-2 text-gray-700 ml-7" id="verifiedBlock" style="display: none;">
+      <input type="checkbox" id="checkVerified" class="mr-2 scale-125" />
+      Ich habe alle Artikel und Mengen sorgfältig geprüft.
+    </label>
+
+    <!-- 5. Показ заполненности коробки (опционально для приёмки, оставить блок пустым) -->
+    <section id="volumeInfoBlock" class="text-sm text-gray-600"></section>
+
+    <!-- 6. Кнопки действий -->
+    <section id="actionButtonsBlock"></section>
+  </section>
+</div>
+
+<!-- 7. Модалка Menge -->
+<div id="mengeModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"></div>
+<!-- 8. Модальные подтверждения -->
+<div id="confirmationModals" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"></div>
+<!-- 9. UI-сообщения / ошибки -->
+<div id="notificationArea" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-300 text-red-800 p-3 rounded-xl shadow-md hidden"></div>
+<footer class="text-center text-sm text-gray-300 mt-4">
+  📦 Alle Rechte an Kartons und Regalen vorbehalten
+</footer>
+<script type="module" src="firebase-setup.js"></script>
+<script>
+
+
+  //=============================================================================
+  //=== JS 0. Глобальные переменные и утилиты ===
+  //=============================================================================
+
+  // авто менялка версии
+  window.appVersion = " 6.34"; // ← Меняешь только тут
+
+//=============================================================================
+// === Разбивалка артикула на части
+//=============================================================================
+window.formatArtikelnummer = function (nummer) {
+  const str = String(nummer).trim();
+  const thinSpace = "\u2009";
+
+  const prefixMatch = str.match(/^[A-Z]+/i); // Префикс из букв в начале
+  const prefix = prefixMatch ? prefixMatch[0] + " " : "";
+
+  const raw = str.replace(/\D/g, ""); // только цифры
+
+  if (raw.length === 13) {
+    return prefix + raw.replace(/(\d{3})(\d{4})(\d{3})(\d{3})/, `$1${thinSpace}$2${thinSpace}$3${thinSpace}$4`);
+  }
+
+  if (raw.length === 12) {
+    return prefix + raw.replace(/(\d{4})(\d{4})(\d{4})/, `$1${thinSpace}$2${thinSpace}$3`);
+  }
+
+  if (raw.length === 10) {
+    return prefix + raw.replace(/(\d{4})(\d{3})(\d{3})/, `$1${thinSpace}$2${thinSpace}$3`);
+  }
+
+  if (raw.length === 8) {
+    return prefix + raw.replace(/(\d{4})(\d{4})/, `$1${thinSpace}$2`);
+  }
+
+  if (raw.length === 6) {
+    return prefix + raw.replace(/(\d{3})(\d{3})/, `$1${thinSpace}$2`);
+  }
+
+  // fallback: каждые 3–4 цифры
+  return prefix + raw.replace(/(\d{3,4})(?=\d)/g, `$1${thinSpace}`);
+};
+
+
+//=============================================================================
+// === гугл заглушка
+//=============================================================================
+window.appState = window.appState || {};
+window.appState.selectedItems = [
+  {
+    Ort: 'R2/A3',
+    Artikelnummer: '404 2277 111 467',
+    Artikelbezeichnung: 'Führungsleiste 2st',
+    Menge: 1,
+    // если нужна статусная иконка — можешь добавить свойство status
+    // status: 'new'
+  }
+];
+
+//=============================================================================
+// === глобальные переменные
+//=============================================================================
+  const searchInput = document.getElementById("searchInput");
+  const suggestionsBox = document.getElementById("suggestions");
+  const suggestionsList = document.getElementById("suggestionsList");
+  window.searchInput = document.getElementById("searchInput");
+  window.suggestionsBox = document.getElementById("suggestions");
+//=============================================================================
+// === Глобальный слушатель клавиш для Menge и другой модалки
+//=============================================================================
+document.addEventListener("keydown", function (e) {
+  const mengeModal = document.getElementById("mengeModal");
+  const confirmModal = document.getElementById("confirmationModals");
+
+  // Если модалка Menge открыта
+  if (mengeModal && !mengeModal.classList.contains("hidden")) {
+    if (e.key === "Escape") window.closeMengeModal();
+    if (e.key === "Enter") {
+      if (typeof window.appState.editIndex === "number") {
+        window.saveEditedCartItem();
+      } else {
+        const mengeInput = document.getElementById("mengeInput");
+        if (mengeInput && document.activeElement === mengeInput) {
+          window.confirmMenge();
+        }
+      }
+    }
+    return;
+  }
+
+  // Если открыта модалка подтверждения
+  if (confirmModal && !confirmModal.classList.contains("hidden")) {
+    if (e.key === "Escape") window.hideDeleteConfirm();
+    if (e.key === "Enter") window.confirmDeleteItem();
+  }
+});
+
+  //=============================================================================
+  // Универсальная функция скрытия и очистки подсказок поиска
+    window.hideSuggestions = function () {
+  const suggestions = document.getElementById("suggestions");
+  if (suggestions) suggestions.classList.add("hidden");
+  if (suggestionsList) suggestionsList.innerHTML = "";
+};
+//=============================================================================
+// === Мердж товаров в корзину (selectedItems), объединяя Menge по Artikelnummer
+//=============================================================================
+window.mergeItemsToCart = function(items) {
+  if (!Array.isArray(items)) return;
+  if (!window.appState) window.appState = {};
+  if (!window.appState.selectedItems) window.appState.selectedItems = [];
+
+  const normalizeNum = num => String(num).replace(/\s/g, '').trim();
+
+  items.forEach(newItem => {
+    // Найти в справочнике (artikelListe) по артикулу
+    const ref = window.artikelListe?.find(row =>
+        normalizeNum(row.Artikelnummer) === normalizeNum(newItem.Artikelnummer) &&
+        (row.Artikelbezeichnung || "") === (newItem.Artikelbezeichnung || "")
+    );
+    // Берём название и Ort из справочника, если есть
+    const artikel = {
+      ...newItem,
+      Artikelbezeichnung: ref?.Artikelbezeichnung || "Нет названия",
+      Ort: ref?.Ort || "-"
+    };
+    const existing = window.appState.selectedItems.find(
+    it =>
+        normalizeNum(it.Artikelnummer) === normalizeNum(artikel.Artikelnummer) &&
+        (it.Artikelbezeichnung || "") === (artikel.Artikelbezeichnung || "")
+    );
+    if (existing) {
+      if (existing.status === 'reserved') {
+        window.unreserveItem(existing.Artikelnummer); // тут можно existing, он уже точно найден
+      }
+      existing.Menge += artikel.Menge;
+      existing.status = 'unverified';
+      console.log("Найден и обновлен:", existing);
+    } else {
+        const menge = artikel.Menge || 0;
+        const status = menge === 0 ? 'empty' : 'unverified';
+        window.appState.selectedItems.push({...artikel, status});
+    }
+  });
+  window.renderCart?.();
+};
+
+//=============================================================================
+// === функцию загрузки Lieferschein:
+//=============================================================================
+window.loadLieferschein = async function () {
+  const input = document.getElementById("lieferscheinInput");
+  const btn = document.getElementById("showLieferscheinBtn");
+
+  const nummer = input.value.trim();
+  if (!nummer) {
+    window.showNotification?.("Bitte Lieferschein-Nummer eingeben!", "error");
+    return;
+  }
+
+  const docRef = window.doc(window.db, "lieferscheine", nummer);
+  const snap = await window.getDoc(docRef);
+
+  if (!snap.exists()) {
+    window.showNotification?.("Lieferschein nicht gefunden!", "error");
+    return;
+  }
+  const data = snap.data();
+
+  // === Блокировка повторного использования ===
+  if (data.status === "fertig") {
+    window.showNotification?.("Dieser Lieferschein ist bereits abgeschlossen.", "info", 5000);
+    return;
+  }
+
+  // Сохраняем активный номер лифершайна
+  window.currentLieferscheinNummer = nummer;
+  // Очищаем поле сразу после чтения значения  
+  input.value = "";
+
+  // Блокируем кнопку на 2 секунды
+  if (btn) {
+    btn.disabled = true;
+    btn.classList.add("opacity-60", "pointer-events-none");
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.classList.remove("opacity-60", "pointer-events-none");
+    }, 2000);
+  }
+
+  // Ищем документ в коллекции 'lieferscheine' по номеру
+  try {
+    const docRef = window.doc(window.db, "lieferscheine", nummer);
+    const snap = await window.getDoc(docRef);
+    if (!snap.exists()) {
+      window.showNotification?.("Lieferschein nicht gefunden!", "error");
+      return;
+    }
+    const data = snap.data();
+    if (!Array.isArray(data.items)) {
+      window.showNotification?.("Ungültiges Format im Lieferschein!", "error");
+      return;
+    }
+    window.mergeItemsToCart(
+  data.items.map(item => ({
+    ...item,
+    Menge: 0 // принудительно всем Menge = 0
+  }))
+);
+    window.renderCart?.();
+    window.showNotification?.("Lieferschein geladen und Artikel zur Liste hinzugefügt.", "success");
+  } catch (e) {
+    window.showNotification?.("Fehler beim Laden: " + e.message, "error");
+  }
+};
+//=============================================================================
+//  уведомляние howNotification, если у тебя её нет лифершайна?
+//=============================================================================
+window.showNotification = function (msg, type = "info") {
+  const el = document.getElementById("notificationArea");
+  if (!el) return;
+  el.textContent = msg;
+  el.className = "active";
+  // Цвета по типу
+  if (type === "success") {
+    el.style.background = "#d1fae5";
+    el.style.color = "#065f46";
+    el.style.border = "1px solid #34d399";
+  } else if (type === "error") {
+    el.style.background = "#fee2e2";
+    el.style.color = "#991b1b";
+    el.style.border = "1px solid #f87171";
+  } else {
+    el.style.background = "#bfdbfe";
+    el.style.color = "#1e40af";
+    el.style.border = "1px solid #3b82f6";
+  }
+  el.classList.add("active");
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => el.classList.remove("active"), 2300);
+};
+
+
+
+//=============================================================================
+// === открывалка модалки
+//=============================================================================
+window.openMengeModal = function (item) {
+  const modal = document.getElementById("mengeModal");
+  if (!modal) return;
+  window.selectedArtikel = item; // или window.appState.selectedItem, если хочешь строгую унификацию
+
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2" style="margin-top:-120px;">
+      <h2 class="text-xl font-bold">Artikel hinzufügen</h2>
+      <div class="text-left px-2">
+        <p class="text-sm text-gray-500">${item.Artikelnummer || ''}</p>
+        <p class="text-lg text-gray-800 font-semibold">${item.Artikelbezeichnung || ''}</p>
+      </div>
+      <input id="mengeInput" type="number" min="1" value="1"
+             class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-center text-lg font-medium" />
+      <div class="flex justify-between pt-2 px-2 gap-2">
+        <button onclick="window.closeMengeModal()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
+        <button onclick="window.confirmMenge()" class="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">OK</button>
+      </div>
+    </div>
+  `;
+
+  modal.classList.remove("hidden");
+  setTimeout(() => {
+    const input = document.getElementById("mengeInput");
+    if (input) {
+      input.blur();
+      input.focus();
+      input.select();
+    }
+  }, 200);
+  setTimeout(() => {
+    const input = document.getElementById("mengeInput");
+    if (input && document.activeElement !== input) {
+      input.blur();
+      input.focus();
+      input.select();
+    }
+  }, 500);
+
+  // Флаг для глобального UX (закрытие по клику и т.п.)
+  window.appState = window.appState || {};
+  window.appState.modalOpen = true;
+};
+
+
+//=============================================================================
+// === закрытие модалки 
+//=============================================================================
+window.closeMengeModal = function () {
+  const modal = document.getElementById("mengeModal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.innerHTML = "";
+  }
+  window.appState.modalOpen = false;
+  window.selectedArtikel = null;
+};
+
+
+//=============================================================================
+// === контроль клавишами
+//=============================================================================
+window.confirmMenge = function () {
+  const mengeInput = document.getElementById("mengeInput");
+  const menge = parseInt(mengeInput?.value, 10);
+  const item = window.selectedArtikel;
+
+  if (!item || isNaN(menge) || menge < 1) {
+    if (mengeInput) mengeInput.classList.add("border-red-400");
+    return;
+  }
+
+  // Новый универсальный способ:
+  window.mergeItemsToCart([{ ...item, Menge: menge }]);
+
+  window.closeMengeModal();
+  // ОЧИЩАЕМ ПОИСК и ПОДСКАЗКИ!
+  if (window.searchInput) window.searchInput.value = "";
+  if (window.suggestionsBox) window.suggestionsBox.classList.add("hidden");
+};
+
+
+//=============================================================================
+// === JS 1. Авторизация и переключение блоков ===
+//=============================================================================
+window.login = async function () {
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const remember = document.getElementById("rememberMe").checked;
+  const persistence = remember ? window.browserSessionPersistence : window.inMemoryPersistence;
+
+  try {
+    await window.setPersistence(window.auth, persistence);
+    const result = await window.signInWithEmailAndPassword(window.auth, email, password);
+    document.getElementById("authStatus").textContent = `✅ Eingeloggt als ${result.user.email}`;
+    // ⬇️ Чистим поля
+    document.getElementById("email").value = "";
+    document.getElementById("password").value = "";
+  } catch (err) {
+    document.getElementById("authStatus").textContent = `❌ Fehler: ${err.message}`;
+  }
+};
+
+window.logout = async function () {
+  try {
+    await window.signOut(window.auth);
+    document.getElementById("authStatus").textContent = "";
+    document.getElementById("email").value = "";
+    document.getElementById("password").value = "";
+    const menu = document.getElementById("menu");
+    if (menu) menu.classList.add("hidden");
+  } catch (err) {
+    console.error("Fehler beim Logout:", err);
+  }
+};
+
+// Переключение между логином и регистрацией
+window.toggleAuthForm = function () {
+  // Защита: если юзер залогинен, запрещаем открывать формы
+  if (window.currentUser) return;
+  const authBlock = document.getElementById('authBlock');
+  const registerBlock = document.getElementById('registerBlock');
+  if (!authBlock || !registerBlock) return;
+  authBlock.classList.toggle('hidden');
+  registerBlock.classList.toggle('hidden');
+  // Чистим статусы ошибок/успеха
+  const authStatus = document.getElementById('authStatus');
+  const registerStatus = document.getElementById('registerStatus');
+  if (authStatus) authStatus.textContent = "";
+  if (registerStatus) registerStatus.textContent = "";
+};
+
+// Регистрация нового пользователя через Firebase Auth
+window.doRegister = async function () {
+  const email = document.getElementById("reg_email").value.trim();
+  const password = document.getElementById("reg_password").value.trim();
+  const code = document.getElementById("reg_code").value.trim();
+  // Подставь сюда твой правильный фирменный код!
+  const FIRMA_CODE = "LAGER2025"; // временно так, потом вставишь декодер Base64 как в Bestelung
+  if (code !== FIRMA_CODE) {
+    document.getElementById("registerStatus").textContent = "❌ Ungültiger Firmen-Code!";
+    return;
+  }
+  if (!email || !password) {
+    document.getElementById("registerStatus").textContent = "❌ Email und Passwort erforderlich";
+    return;
+  }
+  try {
+    const result = await window.createUserWithEmailAndPassword(window.auth, email, password);
+    // После успешной регистрации — выдаём права в user_meta
+    const userMetaRef = window.doc(window.db, "user_meta", result.user.uid);
+    await window.setDoc(userMetaRef, { allowed: true });
+    document.getElementById("registerStatus").textContent = "✅ Registrierung erfolgreich! Bitte einloggen.";
+    document.getElementById("reg_email").value = "";
+    document.getElementById("reg_password").value = "";
+    document.getElementById("reg_code").value = "";
+    // Закрываем форму регистрации (показываем форму логина)
+    window.toggleAuthForm();
+  } catch (err) {
+    document.getElementById("registerStatus").textContent = "❌ Fehler: " + err.message;
+  }
+};
+
+//=============================================================================
+// JS 1.2 Автоматическое переключение блоков интерфейса при (де-)логине
+//=============================================================================
+function waitForFirebaseAuth(cb) {
+  if (window.onAuthStateChanged && window.auth) {
+    cb();
+  } else {
+    setTimeout(() => waitForFirebaseAuth(cb), 30);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+  waitForFirebaseAuth(function() {
+    window.onAuthStateChanged(window.auth, function(user) {
+      window.currentUser = user || null;
+      // === Показываем/скрываем нужные блоки ===
+      const authBlock = document.getElementById("authBlock");
+      const registerBlock = document.getElementById("registerBlock");
+      const mainUI = document.getElementById("mainUI");
+      const loginBtn = document.getElementById("loginButton");
+      const logoutBtn = document.getElementById("logoutButton");
+
+      if (user) {
+        authBlock?.classList.add("hidden");
+        registerBlock?.classList.add("hidden");
+        mainUI?.classList.remove("hidden");
+        loginBtn?.classList.add("hidden");
+        logoutBtn?.classList.remove("hidden");
+      } else {
+        authBlock?.classList.remove("hidden");
+        registerBlock?.classList.add("hidden"); // Регистрация только по ручному клику
+        mainUI?.classList.add("hidden");
+        loginBtn?.classList.remove("hidden");
+        logoutBtn?.classList.add("hidden");
+      }
+    });
+  });
+});
+
+//=============================================================================
+// JS 2.1 Переключение между обычным поиском и режимом Lieferschein
+//=============================================================================
+window.toggleLieferscheinMode = function () {
+  const suggestions = document.getElementById("suggestions");
+  const lieferscheinInputBlock = document.getElementById("lieferscheinInputBlock");
+  const lieferscheinModeBtn = document.getElementById("lieferscheinModeBtn");
+  window.hideSuggestions(); // ← вот ЭТО добавь ПЕРВЫМ!
+  // Если режим Lieferschein уже включён — выключаем его (возвращаем обычный поиск)
+  if (!lieferscheinInputBlock.classList.contains("hidden")) {
+    lieferscheinInputBlock.classList.add("hidden");
+    searchInput.classList.remove("hidden");
+    suggestions.classList.remove("hidden");
+    lieferscheinModeBtn.classList.remove("hidden");
+  } else {
+    // Включаем режим Lieferschein
+    lieferscheinInputBlock.classList.remove("hidden");
+    searchInput.classList.add("hidden");
+    suggestions.classList.add("hidden");
+    lieferscheinModeBtn.classList.add("hidden"); // Скрываем кнопку "Lieferschein geben"
+  }
+};
+
+//=============================================================================
+// 2.2 Добавление функции загрузки каталога:
+//=============================================================================
+window.artikelListe = [];
+window.isCatalogReady = false;
+  const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec";
+  console.log("🟢 Загружаю таблицу из:", GOOGLE_SHEET_URL);
+  fetch(GOOGLE_SHEET_URL)
+    .then((res) => res.json())
+    .then((data) => {
+      window.artikelListe = Array.isArray(data) ? data : (data.data || []);
+      window.isCatalogReady = true;           // поднимаем флаг "справочник готов"
+      window.tryRestoreCart?.();              // если есть функция — восстанавливаем корзину
+      window.showNotification?.("Katalog erfolgreich geladen!", "success");
+      console.log("🟢 загрузка удалась:");
+      // ...можно вызвать перерисовку поиска, если надо
+    })
+    .catch((err) => {
+      window.isCatalogReady = false;
+      window.artikelListe = [];
+      window.showNotification?.("❌ Fehler beim Laden der Artikelliste", "error");
+      console.error("❌ Fehler beim Laden der Google Tabelle:", err);
+    });
+
+//=============================================================================
+// === 2.3 Логика поиска и автоподсказки
+//=============================================================================
+document.addEventListener("DOMContentLoaded", function () {
+    
+    if (searchInput) {
+        searchInput.addEventListener("input", () => {
+    const query = searchInput.value.toLowerCase().replace(/\//g, "").trim();
+    if (!query || !window.artikelListe) {
+        suggestionsBox.classList.add("hidden");
+        return;
+    }
+
+    const matches = window.artikelListe.filter(row => {
+        if (!row.Artikelnummer && !row.Artikelbezeichnung && !row.Ort) return false;
+
+        const ort = String(row.Ort || '').toLowerCase().replace(/\//g, '');
+        const nummer = String(row.Artikelnummer || '').toLowerCase();
+        const name = String(row.Artikelbezeichnung || '').toLowerCase();
+        return ort.includes(query) || nummer.includes(query) || name.includes(query);
+    }).slice(0, 10);
+
+    if (matches.length === 0) {
+        suggestionsList.innerHTML = `<li class="px-4 py-2 text-gray-500 italic">Keine Ergebnisse</li>`;
+    } else {
+        suggestionsList.innerHTML = matches.map(row => `
+        <li class="flex justify-between items-center px-4 py-2 hover:bg-gray-100 cursor-pointer">
+            <span>${row.Ort || ''} — ${row.Artikelnummer || ''} — ${row.Artikelbezeichnung || ''}</span>
+            <button onclick="window.openMengeModal(${JSON.stringify(row).replace(/"/g, '&quot;')})" class="text-green-600 text-xl ml-2">➕</button>
+        </li>
+        `).join("");
+    }
+
+    suggestionsBox.classList.remove("hidden");
+    });
+  }
+});
+
+
+// ===============================
+// JS 4. Корзина (рендер содержимого)
+// ===============================
+window.renderCart = function () {
+  const cart = document.getElementById("cartItems");
+  const items = window.appState.selectedItems || [];
+  const sortedItems = [...items].sort((a, b) => {
+    if ((a.status === 'reserved') && (b.status !== 'reserved')) return 1;
+    if ((a.status !== 'reserved') && (b.status === 'reserved')) return -1;
+    return 0;
+  });
+
+  if (!cart) return;
+  if (items.length === 0) {
+    
+    cart.innerHTML = `
+  <div class="bg-white rounded-xl px-2 py-2 mb-1 flex items-center min-h-[60px]">
+    <span class="text-gray-400 italic text-base">Noch keine Artikel...</span>
+  </div>
+  <div style="height: 100px; pointer-events: none;"></div>
+    `;
+    return;
+  }
+
+  // Шаг 1: собираем все карточки в переменную html
+  let html = sortedItems.map((item, i) => {
+    let bgClass, statusEmoji;
+
+if (item.status === 'reserved') {
+  bgClass = 'bg-green-100';
+  statusEmoji = '🟢';
+} else if (item.status === 'empty') {
+  bgClass = 'bg-yellow-200';    // можно попробовать bg-yellow-100 или bg-yellow-300, смотри по вкусу
+  statusEmoji = '🟠';
+} else {
+  bgClass = 'bg-gray-100';
+  statusEmoji = '🟡';
+}
+    return `
+      <div class="${bgClass} rounded-xl px-4 py-2 mb-1 flex justify-between items-start gap-2">
+        <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
+          <!-- Ort слева вверху -->
+          <div class="text-sm text-gray-500 col-start-1 row-start-1">${item.Ort || '-'}</div>
+          <!-- Пробел (чтобы не схлопывалось) -->
+          <div class="col-start-2 row-start-1 w-4 h-px"></div>
+          <!-- Artikelnummer справа вверху -->
+          <div class="text-sm text-gray-500 col-start-3 row-start-1">
+            ${String(item.Artikelnummer || '').trim().match(/^\d/) ? window.formatArtikelnummer(item.Artikelnummer) : '—'}
+          </div>
+          <!-- Эмодзи (статус) слева во второй строке -->
+          <div class="col-start-1 row-start-2 flex justify-center items-center">
+            <span class="inline-block align-middle text-sm" style="line-height: 1;">${statusEmoji}</span>
+          </div>
+          <!-- Пробел -->
+          <div class="col-start-2 row-start-2 w-4 h-px"></div>
+          <!-- Artikelbezeichnung справа во второй строке -->
+          <div class="col-start-3 row-start-2 flex items-center gap-2">
+            <span class="text-lg text-gray-800 font-semibold">${item.Artikelbezeichnung}</span>
+          </div>
+        </div>
+        <!-- Количество и кнопки -->
+        <div class="flex flex-col items-end text-right ml-2">
+          <div class="font-semibold text-base flex items-center gap-2 justify-end">
+            <span class="ml-2">× ${item.Menge}</span>
+          </div>
+          ${item.status === 'empty'
+            ? '<div class="text-xs text-orange-700 mt-1">Bitte Menge eintragen!</div>'
+            : ''}
+          <div class="flex gap-1 mt-1">
+            ${
+              item.status === 'reserved'
+                ? `<button onclick="window.unreserveItem('${item.Artikelnummer}')" title="Reservierung aufheben" class="text-yellow-600 text-lg">🚫</button>`
+                : `
+                  <button onclick="window.editCartItem('${item.Artikelnummer}')" title="Bearbeiten" class="text-blue-600 text-lg">✏️</button>
+                  <button onclick="window.showDeleteConfirm('${item.Artikelnummer}')" title="Löschen" class="text-red-600 text-lg">🗑️</button>
+                `
+            }
           </div>
         </div>
       </div>
+    `;
+  }).join("");
 
-      <div class="space-y-4">
-        <input type="text" id="searchInput" placeholder="Artikelnummer oder Name oder Ort..."
-          class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400" />
-        <ul id="suggestions"
-          class="bg-white border rounded-xl shadow mt-1 hidden max-h-60 overflow-auto z-10 relative"></ul>
-      </div>
+  // Шаг 2: если мало карточек, добавляем спейсер
+  if (sortedItems.length <= 3) {
+    html += '<div style="height: 100px; pointer-events: none;"></div>';
+}
 
-      <h2 class="mt-6 mb-2 text-lg font-semibold text-gray-700">🧾 Liste der entgegengenommenen Artikel:</h2>
-      <ul id="itemList" class="space-y-2"></ul>
-      <p id="emptyMessage" class="text-center text-gray-400 mt-6">Noch keine Artikel ausgewählt...</p>
+  // Шаг 3: вставляем html в cart
+  cart.innerHTML = html;
 
-      <div id="confirmSection" class="hidden mt-6">
-        <button onclick="confirmDelivery()" class="w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">
-          ✅ Waren eingetroffen
-        </button>
-      </div>
+  window.renderActionButtons?.();
+  // чекбокс логика как была
+  const verifiedBlock = document.getElementById("verifiedBlock");
+  if (verifiedBlock) {
+    const check = document.getElementById("checkVerified");
+    // Сбрасываем только если корзина стала пустой!
+    if (window.appState.selectedItems && window.appState.selectedItems.length === 0) {
+      if (check) check.checked = false;
+    }
+    verifiedBlock.style.display = (window.appState.selectedItems && window.appState.selectedItems.length > 0) ? "" : "none";
+    if (check && !check._handlerAttached) {
+      check.addEventListener("change", function() {
+        window.renderActionButtons?.();
+      });
+      check._handlerAttached = true;
+    }
+  }
+};
 
-      <div id="finalBlock" class="hidden bg-green-100 border border-green-300 p-4 rounded-xl mt-6">
-        <h3 class="font-bold text-green-800 mb-2">📦 Sortierung nach Ort</h3>
-        <ul id="sortedList" class="space-y-2 text-green-900 text-sm"></ul>
-        <div class="mt-4 flex gap-2">
-          <button onclick="finishSorting()" class="flex-1 bg-green-600 text-white py-2 rounded-xl hover:bg-green-700">✔️ Waren einsortiert</button>
-          <button onclick="cancelDelivery()" class="flex-1 bg-red-500 text-white py-2 rounded-xl hover:bg-red-600">❌ Annahme abbrechen</button>
+
+
+
+
+// ===============================
+// JS 4.1 Удаление позиции из корзины
+// ===============================
+window.deleteCartItem = function(index) {
+  if (!window.appState.selectedItems) return;
+  window.appState.selectedItems.splice(index, 1);
+  window.renderCart();
+};
+
+
+//=============================================================================
+// === JS 4.2 функция редактирование товаров
+//=============================================================================
+window.saveEditedCartItem = function () {
+  const index = window.appState.editIndex;
+  const input = document.getElementById("mengeInput");
+  const neueMenge = parseInt(input?.value, 10);
+
+  if (typeof index !== "number" || !window.appState.selectedItems[index]) {
+    window.closeMengeModal();
+    return;
+  }
+  if (!Number.isInteger(neueMenge) || neueMenge < 0) {
+    input.classList.add("border-red-400");
+    input.focus();
+    return;
+  }
+
+  // Меняем Menge
+  window.appState.selectedItems[index].Menge = neueMenge;
+    // === смена статуса с 0 на другой когда изменилось менге!=
+    window.appState.selectedItems[index].status =
+    neueMenge === 0 ? 'empty' : 'unverified';
+
+
+
+  window.closeMengeModal();
+  window.renderCart();
+};
+
+
+// ===============================
+// JS 8. Модалка подтверждения удаления товара
+// ===============================
+window.showDeleteConfirm = function(artikelnummer) {
+  const items = window.appState.selectedItems || [];
+  const index = items.findIndex(x => String(x.Artikelnummer) === String(artikelnummer));
+  if (index === -1) return;
+  
+  const modal = document.getElementById("confirmationModals");
+  if (!modal) return;
+  const item = items[index];
+  if (!item) return;
+
+  // Сохраняем индекс для удаления после подтверждения
+  window.appState.confirmDeleteIndex = index;
+
+  modal.innerHTML = `
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-2xl p-6 w-80 shadow-xl text-center mx-2 border-2 border-red-200">
+        <h2 class="text-xl font-bold mb-3">Artikel löschen?</h2>
+        <div class="text-lg text-gray-800 mb-4">"${item.Artikelbezeichnung}" wirklich entfernen?</div>
+        <div class="flex justify-between pt-2 gap-2">
+          <button onclick="window.hideDeleteConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
+          <button onclick="window.confirmDeleteItem()" class="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">OK</button>
         </div>
       </div>
     </div>
+  `;
+  modal.classList.remove("hidden");
+  window.appState.modalOpen = true;
+};
 
-    <script>
-      let data = [];
+// hideDeleteConfirm для закрытия
+window.hideDeleteConfirm = function () {
+  const modal = document.getElementById("confirmationModals");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.innerHTML = "";
+  }
+  window.appState.modalOpen = false;
+  window.appState.confirmDeleteIndex = null;
+};
 
-      fetch("https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec")
-        .then(res => res.json())
-        .then(json => {
-          data = Array.isArray(json) ? json.map(item => ({
-            Artikelnummer: item.Artikelnummer?.toString() || '',
-            Artikelbezeichnung: item.Artikelbezeichnung?.toString() || '',
-            Ort: item.Ort?.toString() || ''
-          })) : [];
-        })
-        .catch(err => console.error("Fehler beim Laden der Daten:", err));
+window.confirmDeleteItem = function () {
+  const index = window.appState.confirmDeleteIndex;
+  if (typeof index === "number") {
+    window.deleteCartItem(index);
+  }
+  window.hideDeleteConfirm();
+};
 
-      function normalizeQuery(input) {
-        return input.replace(/^([A-Z]\d)([A-Z]\d)/i, "$1/$2").toLowerCase();
-      }
 
-      function clearSearch() {
-        document.getElementById("searchInput").value = "";
-        document.getElementById("suggestions").classList.add("hidden");
-      }
+//=============================================================================
+// === Модалка редактирование количества товаров
+//=============================================================================
+window.editCartItem = function(artikelnummer) {
+  const items = window.appState.selectedItems || [];
+  const index = items.findIndex(x => String(x.Artikelnummer) === String(artikelnummer));
+  if (index === -1) return;
+  const item = items[index]; // вот этот момент нужен!
 
-      function hideSuggestions(event) {
-        const searchBox = document.getElementById("searchInput");
-        const suggestions = document.getElementById("suggestions");
-        if (!searchBox.contains(event.target) && !suggestions.contains(event.target)) {
-          suggestions.classList.add("hidden");
-        }
-      }
+  const modal = document.getElementById("mengeModal");
+  if (!modal) return;
 
-      const menu = document.getElementById("menu");
-      function toggleMenu() {
-        menu.classList.toggle("hidden");
-      }
+  // Сохраняем индекс для редактирования после подтверждения
+  window.appState.editIndex = index;
 
-      const itemList = document.getElementById("itemList");
-      const searchInput = document.getElementById("searchInput");
-      const confirmSection = document.getElementById("confirmSection");
-      const finalBlock = document.getElementById("finalBlock");
-      const sortedList = document.getElementById("sortedList");
-      const suggestions = document.getElementById("suggestions");
-      const emptyMessage = document.getElementById("emptyMessage");
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2" style="margin-top:-120px;">
+      <h2 class="text-xl font-bold">Menge ändern</h2>
+      <div class="text-left px-2">
+        <p class="text-sm text-gray-500">${item.Artikelnummer || ''}</p>
+        <p class="text-lg text-gray-800 font-semibold">${item.Artikelbezeichnung}</p>
+      </div>
+      <input id="mengeInput" type="number" min="1" value="${item.Menge || 1}"
+             class="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 text-center text-lg font-medium" />
+      <div class="flex justify-between pt-2 px-2 gap-2">
+        <button onclick="window.closeMengeModal()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
+        <button onclick="window.saveEditedCartItem()" class="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">OK</button>
+      </div>
+    </div>
+  `;
+  modal.classList.remove("hidden");
+  setTimeout(() => {
+    const input = document.getElementById("mengeInput");
+    if (input) {
+      input.blur();
+      input.focus();
+      input.select();
+    }
+  }, 200);
+  setTimeout(() => {
+    const input = document.getElementById("mengeInput");
+    if (input && document.activeElement !== input) {
+      input.blur();
+      input.focus();
+      input.select();
+    }
+  }, 500);
 
-      const basket = [];
+  window.appState.modalOpen = true;
+};
 
-      function renderSuggestions(query) {
-        suggestions.innerHTML = "";
-        if (!query) return suggestions.classList.add("hidden");
 
-        const filtered = data.filter(item => {
-          return [item.Artikelnummer, item.Artikelbezeichnung, item.Ort].some(field =>
-            field.toLowerCase().includes(query)
-          );
+
+
+//менялка версии
+//=============================================================================
+document.addEventListener("DOMContentLoaded", function() {
+  // Меняем <title>
+  const pageTitle = document.getElementById("pageTitle");
+  if (pageTitle) {
+    pageTitle.textContent = `📦 Warenannahme v${window.appVersion} Reset`;
+  } else {
+    document.title = `📦 Warenannahme v${window.appVersion} Reset`;
+  }
+
+  // Меняем h1
+  const verElem = document.getElementById("ver");
+  if (verElem) verElem.textContent = window.appVersion;
+});
+
+//=============================================================================
+//=== toggleMenu
+//=============================================================================
+window.toggleMenu = function () {
+  const loginBtn = document.getElementById("loginButton");
+  const logoutBtn = document.getElementById("logoutButton");
+
+  if (window.currentUser) {
+    loginBtn?.classList.add("hidden");
+    logoutBtn?.classList.remove("hidden");
+  } else {
+    loginBtn?.classList.remove("hidden");
+    logoutBtn?.classList.add("hidden");
+  }
+
+  const menu = document.getElementById("menu");
+  if (menu) menu.classList.toggle("hidden");
+};
+
+
+//=============================================================================
+// === слушалка тоггл меню
+// ============================================================================
+document.addEventListener("click", function (e) {
+  const menu = document.getElementById("menu");
+  const toggleBtn = document.querySelector("button[onclick*='toggleMenu']");
+  if (
+    menu &&
+    !menu.classList.contains("hidden") &&
+    !menu.contains(e.target) &&
+    e.target !== toggleBtn
+  ) {
+    menu.classList.add("hidden");
+  }
+});
+//=============================================================================
+// === ДОМ рисовалка корзины и кнопок
+//=============================================================================
+document.addEventListener("DOMContentLoaded", function() {
+    window.renderActionButtons?.();
+  window.renderCart();
+  // скрол для поиска когда он в фокусе
+  const searchInput = document.getElementById("searchInput");
+    //выравнивалка поисковую строку
+    if (searchInput) {
+        searchInput.addEventListener("click", function () {
+            setTimeout(() => {
+            // Скроллим так, чтобы строка поиска была ~32px ниже верхней границы экрана
+            const rect = searchInput.getBoundingClientRect();
+            const absoluteY = window.scrollY + rect.top;
+            window.scrollTo({
+                top: absoluteY - 32, // 32px — желаемый отступ сверху
+                behavior: "smooth"
+            });
+            }, 50);
         });
-
-        filtered.slice(0, 20).forEach(item => {
-          const li = document.createElement("li");
-          li.className = "px-4 py-2 hover:bg-gray-100 cursor-pointer flex justify-between items-center";
-
-          const textBlock = document.createElement("span");
-          textBlock.textContent = `${item.Ort} / ${item.Artikelnummer} / ${item.Artikelbezeichnung}`;
-
-          const button = document.createElement("button");
-          button.textContent = "+";
-          button.className = "bg-gray-200 text-black px-2 py-1 rounded hover:bg-gray-300";
-          button.onclick = (e) => {
-            e.stopPropagation();
-            addItemDirect(item);
-            clearSearch();
-          };
-
-          li.appendChild(textBlock);
-          li.appendChild(button);
-          suggestions.appendChild(li);
-        });
-
-        suggestions.classList.remove("hidden");
-      }
-
-      searchInput.addEventListener("input", () => {
-        const query = normalizeQuery(searchInput.value.trim());
-        renderSuggestions(query);
-      });
-
-      searchInput.addEventListener("focus", () => {
-        clearSearch();
-      });
-
-      function addItemDirect(result) {
-        const menge = prompt("Wie viele Stück?", "1");
-        const qty = parseInt(menge);
-        if (isNaN(qty) || qty <= 0) return;
-
-        const existingIndex = basket.findIndex(el => el.name === result.Artikelbezeichnung && el.Ort === result.Ort);
-        if (existingIndex > -1) {
-          basket[existingIndex].qty += qty;
-        } else {
-          basket.push({ name: result.Artikelbezeichnung, qty, Ort: result.Ort, Nummer: result.Artikelnummer });
         }
 
-        renderBasket();
-        confirmSection.classList.remove("hidden");
-      }
+});
 
-      function renderBasket() {
-        itemList.innerHTML = "";
-        if (basket.length === 0) {
-          emptyMessage.classList.remove("hidden");
-        } else {
-          emptyMessage.classList.add("hidden");
-        }
-        basket.forEach((item, index) => {
-          const li = document.createElement("li");
-          li.className = "bg-blue-50 border border-blue-200 rounded-xl p-3 flex justify-between items-center";
-          li.innerHTML = `
-            <div>
-              <div class="font-medium">${item.Ort} / ${item.Nummer} / ${item.name}</div>
-              <div class="text-sm text-gray-600">Menge: ${item.qty}</div>
-            </div>
-            <div class="flex gap-2">
-              <button onclick="editItem(${index})" class="text-yellow-600">✏️</button>
-              <button onclick="removeItem(${index})" class="text-red-600">🗑️</button>
-            </div>`;
-          itemList.appendChild(li);
-        });
-      }
+//=============================================================================
+// === слушатель кликов для поисковой строки ( удаляет если ткнул за за приделами)
+//=============================================================================
 
-      function editItem(index) {
-        const neueMenge = prompt("Neue Menge eingeben:", basket[index].qty);
-        const menge = parseInt(neueMenge);
-        if (!isNaN(menge) && menge > 0) {
-          basket[index].qty = menge;
-          renderBasket();
-        }
-      }
+document.addEventListener("click", (e) => {
+  const inside = searchInput.contains(e.target) || suggestionsBox.contains(e.target);
+  if (!inside && !window.appState?.modalOpen) {
+    suggestionsBox.classList.add("hidden");
+    searchInput.value = ""; // если хочешь очищать строку поиска
+  }
+});
 
-      function removeItem(index) {
-        basket.splice(index, 1);
-        renderBasket();
-        if (basket.length === 0) confirmSection.classList.add("hidden");
-      }
+//=============================================================================
+// === кнопки в корзине
+//=============================================================================
+window.renderActionButtons = function () {
+  const block = document.getElementById("actionButtonsBlock");
+  if (!block) return;
 
-      
-      function confirmDelivery() {
-        finalBlock.classList.remove("hidden");
-        confirmSection.classList.add("hidden");
+  const items = window.appState.selectedItems || [];
+   const allReserved = items.length > 0 && items.every(item => item.status === 'reserved');
+  const allUnverified = items.length > 0 && items.every(item => item.status !== 'reserved');
+  const anyReserved = items.some(item => item.status === 'reserved');
+  const anyUnreserved = items.some(item => item.status !== 'reserved');
+  const cartIsEmpty = items.length === 0;
+  const isVerified = document.getElementById("checkVerified")?.checked;
 
-        const sorted = basket.slice().sort((a, b) => {
-          const parseOrt = (ort) => {
-            const parts = ort.toUpperCase().split(/[^A-Z0-9]/).filter(Boolean);
-            return parts.map(p => isNaN(p) ? p : parseInt(p, 10));
-          };
+  if (cartIsEmpty) {
+    block.innerHTML = `
+      <div class="flex flex-col sm:flex-row gap-2 mt-2">
+        <button class="flex-1 px-4 py-2 rounded-xl bg-gray-300 text-gray-500 cursor-not-allowed" disabled>✔️ Bearbeitung abschließen</button>
+        <button class="flex-1 px-4 py-2 rounded-xl bg-gray-300 text-gray-500 cursor-not-allowed" disabled>🗑️ Unreservierte entfernen</button>
+      </div>
+    `;
+    return;
+  }
 
-          const aParts = parseOrt(a.Ort);
-          const bParts = parseOrt(b.Ort);
+  if (allUnverified) {
+    block.innerHTML = `
+      <div class="flex flex-col sm:flex-row gap-2 mt-2">
+        <button onclick="window.checkAndReserveAll()" class="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">✔️ Bearbeitung abschließen</button>
+        <button onclick="window.showClearCartConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-300">🗑️ Unreservierte entfernen</button>
+      </div>
+    `;
+    return;
+  }
 
-          for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
-            if (aParts[i] === undefined) return -1;
-            if (bParts[i] === undefined) return 1;
-            if (aParts[i] < bParts[i]) return -1;
-            if (aParts[i] > bParts[i]) return 1;
-          }
-          return 0;
-        });
+  if (allReserved) {
+  block.innerHTML = `
+    <div class="flex flex-col sm:flex-row gap-2 mt-2">
+      <button onclick="window.showConfirmAbschliessen()" 
+        class="flex-1 px-4 py-2 rounded-xl ${isVerified ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}"
+        ${isVerified ? '' : 'disabled'}>
+        ✔️ Warenannahme abschließen
+      </button>
+      <button onclick="window.showUnreserveAllConfirm()" 
+        class="flex-1 px-4 py-2 rounded-xl bg-yellow-500 text-white hover:bg-yellow-600">
+        🚫 Reservierung aufheben
+      </button>
+    </div>
+  `;
+  return;
+}
 
-        sortedList.innerHTML = "";
-        sorted.forEach(item => {
-          const li = document.createElement("li");
-          li.textContent = `${item.Ort} / ${item.Nummer} → ${item.name} (${item.qty} Stk.)`;
-          sortedList.appendChild(li);
-        });
-      }
+  if (anyReserved && anyUnreserved) {
+  block.innerHTML = `
+    <div class="flex flex-col sm:flex-row gap-2 mt-2">
+      <button onclick="window.checkAndReserveAll()" class="flex-1 px-4 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600">✔️ Bearbeitung abschließen</button>
+      <button onclick="window.showClearUnreservedConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">🗑️ Unreservierte entfernen</button>
+      <button onclick="window.showUnreserveAllConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-yellow-500 text-white hover:bg-yellow-600">🚫 Reservierung aufheben</button>
+    </div>
+  `;
+  return;
+}
+
+  // ... здесь будут разные состояния (оставь просто как есть, вернемся)
+};
 
 
-      async function finishSorting() {
-        try {
-          for (const item of basket) {
-            const ref = db.collection("lager").where("Artikelnummer", "==", item.Nummer).limit(1);
-            const snapshot = await ref.get();
 
-            if (!snapshot.empty) {
-              const doc = snapshot.docs[0];
-              const currentMenge = doc.data().Menge || 0;
-              await doc.ref.update({ Menge: currentMenge + item.qty });
-            } else {
-              console.warn("Artikel nicht gefunden:", item);
-            }
-          }
 
-          alert("Waren erfolgreich einsortiert ✅");
-          basket.length = 0;
-          renderBasket();
-          finalBlock.classList.add("hidden");
-        } catch (err) {
-          console.error("Fehler beim Einsortieren:", err);
-          alert("Fehler beim Einsortieren. Bitte später erneut versuchen.");
-        }
-      }
+//=============================================================================
+// === Заглушки для кнопок в корзине
+//=============================================================================
 
-      function cancelDelivery() {
-        if (confirm("Bist du sicher, dass du die Annahme abbrechen möchtest?")) {
-          basket.length = 0;
-          renderBasket();
-          finalBlock.classList.add("hidden");
-        }
-      }
-    </script>
+// Заглушка: Проверить и зарезервировать все товары
+window.checkAndReserveAll = function () {
+  const items = window.appState.selectedItems || [];
+  let changed = false;
+  items.forEach(item => {
+    if (item.status !== 'reserved') {
+      item.status = 'reserved';
+      changed = true;
+    }
+  });
+  window.renderCart?.();
+  window.showNotification?.(changed ? "Alle Artikel reserviert." : "Nichts zu reservieren.", "success");
+};
 
-    <footer class="text-center text-sm text-gray-300 mt-10">
-      📦 Alle Rechte an Kartons und Regalen vorbehalten
-    </footer>
-  </body>
+
+
+
+// Заглушка: Завершить приёмку (подтвердить все)
+window.confirmAllItems = function () {
+  window.showNotification?.("Завершение приёмки пока не реализовано", "info");
+};
+
+// Заглушка: Снять резерв со всех товаров
+window.unreserveAll = function () {
+  window.showNotification?.("Снятие резервации пока не реализовано", "info");
+};
+
+// Заглушка: Часть в резерве часть нет
+window.clearUnreservedItems = function () {
+  window.showNotification?.("Удаление не зарезервированных пока не реализовано", "info");
+};
+
+//=============================================================================
+// === что то с разрезервированием одного товара в корзине связанно
+//=============================================================================
+window.unreserveItem = function (artikelnummer) {
+  const items = window.appState.selectedItems || [];
+  const item = items.find(x => String(x.Artikelnummer) === String(artikelnummer));
+  if (!item) return;
+  item.status = 'unverified';
+  window.renderCart?.();
+  window.showNotification?.("Reservierung aufgehoben.", "success");
+};
+
+//=============================================================================
+// === Очистить всю корзину (Warenkorb leeren):
+//=============================================================================
+window.clearCart = function () {
+  window.appState.selectedItems = [];
+  window.renderCart?.();
+  window.showNotification?.("Warenkorb geleert.", "success");
+};
+
+//=============================================================================
+// === Удаление незарезервированных товаров
+//=============================================================================
+window.clearUnreservedItems = function () {
+  const items = window.appState.selectedItems || [];
+  // Оставляем только товары со статусом reserved
+  window.appState.selectedItems = items.filter(item => item.status === 'reserved');
+  window.renderCart?.();
+  window.showNotification?.("Nur reservierte Artikel bleiben erhalten.", "success");
+};
+
+//=============================================================================
+// === Модалка для полного отчищения 
+//=============================================================================
+window.showClearCartConfirm = function () {
+  const modal = document.getElementById("confirmationModals");
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-2xl p-6 w-80 shadow-xl text-center mx-2 border-2 border-red-200">
+        <h2 class="text-xl font-bold mb-3">Warenkorb wirklich leeren?</h2>
+        <div class="text-lg text-gray-800 mb-4">Alle Artikel werden gelöscht!</div>
+        <div class="flex justify-between pt-2 gap-2">
+          <button onclick="window.hideDeleteConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
+          <button onclick="window.confirmClearCart()" class="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">OK</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.remove("hidden");
+  window.appState.modalOpen = true;
+};
+
+//=============================================================================
+// === функция подтверждения 
+//=============================================================================
+window.confirmClearCart = function () {
+  window.hideDeleteConfirm();
+  window.clearCart();
+};
+
+//=============================================================================
+// === модалка для 🚫 Reservierung aufheben
+//============================================================================= 
+window.showUnreserveAllConfirm = function () {
+  const modal = document.getElementById("confirmationModals");
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-2xl p-6 w-80 shadow-xl text-center mx-2 border-2 border-red-200">
+        <h2 class="text-xl font-bold mb-3">Reservierung aufheben?</h2>
+        <div class="text-lg text-gray-800 mb-4">Alle reservierten Artikel werden wieder bearbeitbar.</div>
+        <div class="flex justify-between pt-2 gap-2">
+          <button onclick="window.hideDeleteConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
+          <button onclick="window.confirmUnreserveAll()" class="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">OK</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.remove("hidden");
+  window.appState.modalOpen = true;
+};
+
+//=============================================================================
+// === обработчик подтверждения —“снимаем” резерв у всех товаров резервацию
+//=============================================================================
+
+
+window.confirmUnreserveAll = function () {
+  const items = window.appState.selectedItems || [];
+  items.forEach(item => {
+    if (item.status === 'reserved') {
+      item.status = 'unverified';
+    }
+  });
+  window.hideDeleteConfirm();
+  window.renderCart?.();
+  window.showNotification?.("Alle Reservierungen aufgehoben.", "success");
+};
+
+//=============================================================================
+// === Функция показа модалки для удаления незарезервированных товаров
+//=============================================================================
+
+window.showClearUnreservedConfirm = function () {
+  const modal = document.getElementById("confirmationModals");
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-2xl p-6 w-80 shadow-xl text-center mx-2 border-2 border-red-200">
+        <h2 class="text-xl font-bold mb-3">Unreservierte Artikel entfernen?</h2>
+        <div class="text-lg text-gray-800 mb-4">Alle nicht reservierten Artikel werden gelöscht.</div>
+        <div class="flex justify-between pt-2 gap-2">
+          <button onclick="window.hideDeleteConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
+          <button onclick="window.confirmClearUnreserved()" class="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600">OK</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.remove("hidden");
+  window.appState.modalOpen = true;
+};
+
+//=============================================================================
+// === Функция подтверждения — удалить все не зарезервированные
+//=============================================================================
+window.confirmClearUnreserved = function () {
+  const items = window.appState.selectedItems || [];
+  window.appState.selectedItems = items.filter(item => item.status === 'reserved');
+  window.hideDeleteConfirm();
+  window.renderCart?.();
+  window.showNotification?.("Nur reservierte Artikel bleiben erhalten.", "success");
+};
+
+//=============================================================================
+// === Модалка для “Abschließen”
+//=============================================================================
+
+window.showConfirmAbschliessen = function () {
+  const modal = document.getElementById("confirmationModals");
+  if (!modal) return;
+
+  modal.innerHTML = `
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="bg-white rounded-2xl p-6 w-80 shadow-xl text-center mx-2 border-2 border-blue-200">
+        <h2 class="text-xl font-bold mb-3">Warenannahme abschließen?</h2>
+        <div class="text-lg text-gray-800 mb-4">Alle reservierten Artikel werden endgültig übernommen und die Liste geleert.</div>
+        <div class="flex justify-between pt-2 gap-2">
+          <button onclick="window.hideDeleteConfirm()" class="flex-1 px-4 py-2 rounded-xl bg-gray-300 hover:bg-gray-400">Abbrechen</button>
+          <button onclick="window.confirmAbschliessen()" class="flex-1 px-4 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600">OK</button>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.remove("hidden");
+  window.appState.modalOpen = true;
+};
+
+//=============================================================================
+// === беарбайтунг на кнопке одтверждения приёмки “Abschließen”
+//=============================================================================
+
+
+
+//=============================================================================
+// === Функция подтверждения приёмки “Abschließen” отсылка и отчистка
+//=============================================================================
+window.confirmAbschliessen = async function () {
+
+// Блокируем кнопку OK + спиннер
+const modal = document.getElementById("confirmationModals");
+if (modal) {
+  const okBtn = modal.querySelector("button.bg-blue-500, button.bg-red-500");
+  if (okBtn) {
+    okBtn.disabled = true;
+    okBtn.innerHTML = `<span class="animate-pulse mr-1">⏳</span>Bitte warten...`;
+    okBtn.classList.remove("bg-blue-500", "hover:bg-blue-600", "bg-red-500", "hover:bg-red-600");
+    okBtn.classList.add("bg-gray-300", "text-gray-500", "cursor-not-allowed");
+  }
+}
+
+// Получаем список только reserved товаров
+const items = (window.appState.selectedItems || []).filter(item => item.status === 'reserved');
+if (items.length === 0) {
+  window.showNotification?.("Keine reservierten Artikel.", "error");
+  return;
+}
+// Обновляем количество на складе
+for (const item of items) {
+  const artikelRef = window.doc(window.db, "lager", String(item.Artikelnummer));
+  const artikelSnap = await window.getDoc(artikelRef);
+  if (artikelSnap.exists()) {
+    const artikelData = artikelSnap.data();
+    const neueMenge = (Number(artikelData.Menge) || 0) + Number(item.Menge || 0);
+    await window.setDoc(artikelRef, { ...artikelData, Menge: neueMenge }, { merge: true });
+  }
+}
+// НАДЁЖНО получаем номер лифершайна
+let nummer = window.currentLieferscheinNummer;
+if (!nummer) {
+  const input = document.getElementById("lieferscheinInput");
+  nummer = input?.value.trim();
+}
+if (nummer) {
+  const lieferscheinRef = window.doc(window.db, "lieferscheine", nummer);
+  await window.setDoc(lieferscheinRef, { status: "fertig", abgeschlossenAm: Date.now() }, { merge: true });
+  window.currentLieferscheinNummer = null; // обязательно сбрасываем
+}
+
+
+// Здесь можешь добавить отправку данных в Firestore или любой другой финальный апдейт!
+// Пока просто очищаем корзину и показываем уведомление:
+window.hideDeleteConfirm();
+window.appState.selectedItems = [];
+window.renderCart?.();
+setTimeout(() => {
+  window.renderActionButtons?.();
+}, 50);
+// Сброс чекбокса после отправки
+const check = document.getElementById("checkVerified");
+if (check) check.checked = false;
+
+window.showNotification?.("Warenannahme abgeschlossen. Liste geleert.", "success");
+};
+
+
+
+
+
+
+
+
+
+
+
+</script>
+<div id="notificationArea" class="hidden"></div>
+
+<!--
+//=============================================================================
+// === Заготовка модального окна Menge
+//============================================================================= -->
+
+
+<div id="mengeModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 hidden">
+    <div class="bg-white p-6 rounded-2xl shadow-xl w-[320px] flex flex-col items-stretch">
+      <h3 class="text-lg font-bold mb-2" id="mengeModalTitle">Artikel</h3>
+      <label class="mb-2 text-sm text-gray-600">Menge:
+        <input id="mengeInput" type="number" min="1" value="1"
+               class="w-full mt-1 px-3 py-2 border rounded-xl text-lg" />
+      </label>
+      <div class="flex gap-2 mt-4 justify-end">
+        <button onclick="window.closeMengeModal()" class="px-4 py-1 bg-gray-200 rounded-xl">Abbrechen</button>
+        <button onclick="window.confirmMenge()" class="px-4 py-1 bg-blue-500 text-white rounded-xl">OK</button>
+      </div>
+    </div>
+  </div>
+
+</body>
 </html>
