@@ -949,6 +949,12 @@
       return str.slice(0, keep) + sep + str.slice(-keep);
     }
 
+
+        // Генерирует уникальный ключ для товара в корзине
+    window.getCartItemKey = function(item) {
+      return `${item.Artikelnummer}__${item.Artikelbezeichnung}__${item.Ort}`;
+    }
+
     window.renderCart = function () {
       const cart = document.getElementById("cartItems");
       const items = window.appState.selectedItems;
@@ -1394,16 +1400,16 @@
     //==========================
     console.log("Рендер корзины, пример item:", sortedItems && sortedItems[0]);
     cart.innerHTML = sortedItems
-      .map((item, i) => {
-        const isSelected = item._selected;
-        const selectedClass = isSelected ? 'ring-4 ring-blue-400' : '';
-        const bgClass = getBgClassByStatus(item.status);
+  .map((item, i) => {
+    const isSelected = item._selected;
+    const selectedClass = isSelected ? 'ring-2 ring-blue-400' : '';
+    const bgClass = getBgClassByStatus(item.status);
+    const key = window.getCartItemKey(item);
 
-        return `
-        <div class="${bgClass} ${selectedClass} cart-card rounded-xl px-2 py-2 mb-2 flex justify-between items-start gap-2"
-            data-index="${i}"
-            onclick="window.toggleCartSelection(${i})">
-        
+    return `
+      <div class="${bgClass} ${selectedClass} cart-card rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2"
+        data-key="${key}" onclick="window.toggleCartSelection('${key}')">
+
         <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
           <!-- Первая строка -->
           <div class="text-sm text-gray-500 col-start-1 row-start-1 flex justify-center items-center">${item.Ort}</div>
@@ -1418,14 +1424,14 @@
           <div class="col-start-2 row-start-2 w-4 h-px"></div>
           <div class="col-start-3 row-start-2 flex items-center gap-2 min-w-0">
             <span 
-                class="text-lg text-gray-800 font-semibold hyphenated min-w-0 cursor-pointer"
-                style="max-width:100%; ${(item._expanded ? 'white-space:normal; word-break:break-word; hyphens:auto;' : 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap; direction: ltr;')}"
-                title="${item.Artikelbezeichnung || ''}"
-                onclick="window.toggleCartExpand(${i}); event.stopPropagation();"
-                tabindex="0"
-                >
-                ${item._expanded ? item.Artikelbezeichnung : window.middleEllipsis(item.Artikelbezeichnung || '', 22)}
-                </span>
+              class="text-lg text-gray-800 font-semibold hyphenated min-w-0 cursor-pointer"
+              style="max-width:100%; ${(item._expanded ? 'white-space:normal; word-break:break-word; hyphens:auto;' : 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap; direction: ltr;')}"
+              title="${item.Artikelbezeichnung || ''}"
+              onclick="window.toggleCartExpand('${key}'); event.stopPropagation();"
+              tabindex="0"
+            >
+              ${item._expanded ? item.Artikelbezeichnung : window.middleEllipsis(item.Artikelbezeichnung || '', 22)}
+            </span>
           </div>
         </div>
         <div class="flex flex-col items-end text-right ml-2">
@@ -1448,9 +1454,9 @@
           </div>
         </div>
       </div>
-      `
-    })
-      .join("");
+    `;
+  })
+  .join("");
       window.updateBoxInfo();
       window.updateCartButtons(window.appState.selectedItems);
     };
@@ -1607,20 +1613,21 @@
     };
 
     //Эта функция отвечает только за выделение/снятие выделения карточки (синий
-    window.toggleCartSelection = function(index) {
+    window.toggleCartSelection = function(key) {
       const items = window.appState.selectedItems || [];
-      if (!items[index]) return;
-      items[index]._selected = !items[index]._selected;
-      console.log('toggleCard', index, items[index]);
+      const item = items.find(i => window.getCartItemKey(i) === key);
+      if (!item) return;
+      item._selected = !item._selected;
       window.renderCart?.();
-    }
+    };
 
     // === Обработка выделения карточек по тапу (визуальное выделение синим)
-    window.toggleCartExpand = function(index) {
-        const items = window.appState.selectedItems || [];
-      if (!items[index]) return;
-      // Тогглим _selected: если уже раскрыто — скрываем, если нет — раскрываем
-      items[index]._expanded = !items[index]._expanded;
+    window.toggleCartExpand = function(key) {
+      const items = window.appState.selectedItems || [];
+      const item = items.find(i => window.getCartItemKey(i) === key);
+      if (!item) return;
+          // Тогглим _selected: если уже раскрыто — скрываем, если нет — раскрываем
+      item._expanded = !item._expanded;
       window.renderCart?.();
     };
 
