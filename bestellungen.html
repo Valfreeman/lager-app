@@ -3,6 +3,17 @@
 
 <html lang="de">
 <head>
+  <style>
+    .hyphenated {
+      hyphens: auto;
+      word-break: break-word;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+      display: inline-block;
+    }
+    </style>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title id="pageTitle">📦 LagerApp</title>
@@ -159,7 +170,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.22"; // ← Меняешь только тут
+    window.appVersion = " 6.24"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -171,6 +182,20 @@
     }
     }
 
+
+    // Глобальный слушатель клика для автозакрытия меню
+document.addEventListener("click", function (e) {
+  const menu = document.getElementById("menu");
+  const toggleBtn = document.querySelector("button[onclick*='toggleMenu']");
+  if (
+    menu &&
+    !menu.classList.contains("hidden") &&
+    !menu.contains(e.target) &&
+    e.target !== toggleBtn
+  ) {
+    menu.classList.add("hidden");
+  }
+});
 
     // === ИНИЦИАЛИЗАЦИЯ СИНХРОНИЗАЦИИ ===
   // Флаги для отслеживания готовности данных и пользователя
@@ -821,7 +846,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   suggestionsBox.classList.remove("hidden");
-
   document.addEventListener("click", (e) => {
   const inside = searchInput.contains(e.target) || suggestionsBox.contains(e.target);
   if (!inside && !window.appState.modalOpen) {
@@ -829,6 +853,7 @@ document.addEventListener("DOMContentLoaded", function () {
     searchInput.value = "";
   }
 });
+
 
 });
     // ========================
@@ -1358,34 +1383,35 @@ cart.innerHTML = sortedItems
     const bgClass = getBgClassByStatus(item.status);
 
     return `
-  <div 
-    class="${bgClass} ${selectedClass} cart-card rounded-xl px-4 py-2 mb-2 flex justify-between items-center gap-2 transition-all duration-200 ${isSelected ? 'shadow-lg scale-[1.03] font-bold' : ''}"
-    data-index="${i}"
-    style="min-width:0;"
-  >
-    <!-- Левая часть: Ort + смайлик вертикально -->
-    <div class="flex flex-col justify-center items-center w-16 flex-shrink-0">
-      <div class="text-sm text-gray-500 text-center w-full">${item.Ort}</div>
-      <span class="inline-block align-middle text-xl mt-1" style="line-height: 1;">${getStatusIcon(item.status)}</span>
-    </div>
-    <!-- Центральная часть: Артикул на первой строке, название ниже -->
-    <div class="flex flex-col flex-1 min-w-0 justify-center">
-      <div class="text-sm text-gray-500 text-left truncate"
-        style="max-width:100%;">
+    <div class="${bgClass} ${selectedClass} cart-card rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2"
+        data-index="${i}"
+        onclick="window.toggleCartSelection(${i})">
+    
+    <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
+      <!-- Первая строка -->
+      <div class="text-sm text-gray-500 col-start-1 row-start-1 flex justify-center items-center">${item.Ort}</div>
+      <div class="col-start-2 row-start-1 w-4 h-px"></div>
+      <div class="text-sm text-gray-500 col-start-3 row-start-1">
         ${String(item.Artikelnummer || '').trim().match(/^\d/) ? window.formatArtikelnummer(item.Artikelnummer) : '—'}
       </div>
-      <div 
-        class="text-lg text-gray-800 font-semibold min-w-0 cursor-pointer mt-1"
-        style="display:inline-block; max-width:100%; vertical-align:middle; min-width:0; ${isSelected ? '' : 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap; direction: ltr;'}"
-        title="${item.Artikelbezeichnung || ''}"
-        onclick="window.toggleCartExpand(${i}); event.stopPropagation();"
-        tabindex="0"
-      >
-        ${isSelected ? item.Artikelbezeichnung : window.middleEllipsis(item.Artikelbezeichnung || '', 22)}
+      <!-- Вторая строка -->
+      <div class="col-start-1 row-start-2 flex justify-center items-center">
+        <span class="inline-block align-middle text-sm" style="line-height: 1;">${getStatusIcon(item.status)}</span>
+      </div>
+      <div class="col-start-2 row-start-2 w-4 h-px"></div>
+      <div class="col-start-3 row-start-2 flex items-center gap-2 min-w-0">
+        <span 
+            class="text-lg text-gray-800 font-semibold hyphenated min-w-0 cursor-pointer"
+            style="max-width:100%; ${(item._expanded ? 'white-space:normal; word-break:break-word; hyphens:auto;' : 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap; direction: ltr;')}"
+            title="${item.Artikelbezeichnung || ''}"
+            onclick="window.toggleCartExpand(${i}); event.stopPropagation();"
+            tabindex="0"
+            >
+            ${item._expanded ? item.Artikelbezeichnung : window.middleEllipsis(item.Artikelbezeichnung || '', 22)}
+            </span>
       </div>
     </div>
-    <!-- Правая часть: Кол-во и действия -->
-    <div class="flex flex-col items-end text-right flex-shrink-0 ml-2">
+    <div class="flex flex-col items-end text-right ml-2">
       <div class="font-semibold text-base flex items-center gap-2 justify-end">
         ${item.status === 'unavailable'
           ? `<span class="text-base text-red-600">Auf Lager: ${item.stock ?? 0}</span>`
@@ -1563,30 +1589,26 @@ window.confirmClearUnavailable = function () {
   window.appState.modalOpen = false;
 };
 
-
+//Эта функция отвечает только за выделение/снятие выделения карточки (синий
 window.toggleCartSelection = function(index) {
   const items = window.appState.selectedItems || [];
   if (!items[index]) return;
   items[index]._selected = !items[index]._selected;
+  console.log('toggleCard', index, items[index]);
   window.renderCart?.();
 }
+
 // === Обработка выделения карточек по тапу (визуальное выделение синим)
 window.toggleCartExpand = function(index) {
-  const items = window.appState.selectedItems || [];
+    const items = window.appState.selectedItems || [];
   if (!items[index]) return;
   // Тогглим _selected: если уже раскрыто — скрываем, если нет — раскрываем
-  items[index]._selected = !items[index]._selected;
+  items[index]._expanded = !items[index]._expanded;
   window.renderCart?.();
 };
 
-// === Глобальный обработчик кликов по карточкам (тапы и клики)
-document.addEventListener("click", function (e) {
-  const card = e.target.closest(".cart-card");
-  if (!card || !card.dataset.index) return;
-  const index = parseInt(card.dataset.index, 10);
-  if (isNaN(index)) return;
-  window.toggleCartSelection(index);
-});
+
+
 
 //=============================================================================
     // ========================
@@ -2201,18 +2223,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 // ======================================================
 // Глобальный слушатель клика для автозакрытия меню
-document.addEventListener("click", function (e) {
-  const menu = document.getElementById("menu");
-  const toggleBtn = document.querySelector("button[onclick*='toggleMenu']");
-  if (
-    menu &&
-    !menu.classList.contains("hidden") &&
-    !menu.contains(e.target) &&
-    e.target !== toggleBtn
-  ) {
-    menu.classList.add("hidden");
-  }
-});
+
 
 
 document.addEventListener("DOMContentLoaded", function() {
