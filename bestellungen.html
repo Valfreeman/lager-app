@@ -159,7 +159,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.21"; // ← Меняешь только тут
+    window.appVersion = " 6.22"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -1440,13 +1440,7 @@ window.editItem = function(artikelnummer) {
   }
 }, 200);
 
-// === Обработка выделения карточек по тапу (визуальное выделение синим)
-window.toggleCartSelection = function (index) {
-  const items = window.appState.selectedItems || [];
-  if (!items[index]) return;
-  items[index]._selected = !items[index]._selected;
-  window.renderCart?.();
-};
+
 
 // === Глобальный обработчик кликов по карточкам (тапы и клики)
 document.addEventListener("click", function (e) {
@@ -1564,6 +1558,17 @@ window.confirmClearUnavailable = function () {
   window.appState.modalOpen = false;
 };
 
+// === Обработка выделения карточек по тапу (визуальное выделение синим)
+window.toggleCartSelection = function (index) {
+  const items = window.appState.selectedItems || [];
+  if (!items[index]) {
+    console.warn("❌ Неверный индекс:", index);
+    return;
+  }
+  items[index]._selected = !items[index]._selected;
+  console.log("✅ Переключил выделение для:", items[index]);
+  window.renderCart?.();
+};
 
 //=============================================================================
     // ========================
