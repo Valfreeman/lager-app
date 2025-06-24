@@ -159,7 +159,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.23"; // ← Меняешь только тут
+    window.appVersion = " 6.22"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -901,7 +901,13 @@ if (existingReservedItem) {
   window.renderCart();
   window.updateCartButtons(window.appState.selectedItems);
 };
-
+// Эклисп ) серединовырезалка middeelelips    
+window.middleEllipsis = function(str, maxLen = 22) {
+  if (!str || str.length <= maxLen) return str;
+  const sep = '…';
+  const keep = Math.floor((maxLen - sep.length) / 2);
+  return str.slice(0, keep) + sep + str.slice(-keep);
+}
 
 window.renderCart = function () {
   const cart = document.getElementById("cartItems");
@@ -1352,45 +1358,51 @@ cart.innerHTML = sortedItems
     const bgClass = getBgClassByStatus(item.status);
 
     return `
-  <div class="${bgClass} ${selectedClass} cart-card rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2" data-index="${i}">
-
-    <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
-      <!-- Первая строка -->
-      <div class="text-sm text-gray-500 col-start-1 row-start-1">${item.Ort}</div>
-      <div class="col-start-2 row-start-1 w-4 h-px"></div>
-      <div class="text-sm text-gray-500 col-start-3 row-start-1">
+  <div 
+    class="${bgClass} ${selectedClass} cart-card rounded-xl px-4 py-2 mb-2 flex justify-between items-center gap-2 transition-all duration-200 ${isSelected ? 'shadow-lg scale-[1.03] font-bold' : ''}"
+    data-index="${i}"
+    style="min-width:0;"
+  >
+    <!-- Левая часть: Ort + смайлик вертикально -->
+    <div class="flex flex-col justify-center items-center w-16 flex-shrink-0">
+      <div class="text-sm text-gray-500 text-center w-full">${item.Ort}</div>
+      <span class="inline-block align-middle text-xl mt-1" style="line-height: 1;">${getStatusIcon(item.status)}</span>
+    </div>
+    <!-- Центральная часть: Артикул на первой строке, название ниже -->
+    <div class="flex flex-col flex-1 min-w-0 justify-center">
+      <div class="text-sm text-gray-500 text-left truncate"
+        style="max-width:100%;">
         ${String(item.Artikelnummer || '').trim().match(/^\d/) ? window.formatArtikelnummer(item.Artikelnummer) : '—'}
       </div>
-      <!-- Вторая строка -->
-      <div class="col-start-1 row-start-2 flex justify-center items-center">
-        <span class="inline-block align-middle text-sm" style="line-height: 1;">${getStatusIcon(item.status)}</span>
-      </div>
-      <div class="col-start-2 row-start-2 w-4 h-px"></div>
-      <div class="col-start-3 row-start-2 flex items-center gap-2">
-        <span class="text-lg text-gray-800 font-semibold">${item.Artikelbezeichnung}</span>
+      <div 
+        class="text-lg text-gray-800 font-semibold min-w-0 cursor-pointer mt-1"
+        style="display:inline-block; max-width:100%; vertical-align:middle; min-width:0; ${isSelected ? '' : 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap; direction: ltr;'}"
+        title="${item.Artikelbezeichnung || ''}"
+        onclick="window.toggleCartExpand(${i}); event.stopPropagation();"
+        tabindex="0"
+      >
+        ${isSelected ? item.Artikelbezeichnung : window.middleEllipsis(item.Artikelbezeichnung || '', 22)}
       </div>
     </div>
-
-    <div class="flex flex-col items-end text-right">
-        <div class="font-semibold text-base flex items-center gap-2 justify-end">
-             ${item.status === 'unavailable'
-            ? `<span class="text-base text-red-600">Auf Lager: ${item.stock ?? 0}</span>`
-            : ''
-            }
-            <span class="ml-2">× ${item.Menge}</span>
-        </div>
-        
-            <div class="flex gap-1 mt-1">
-             ${
-                 item.status === 'reserved'
-             ? `<button onclick="unreserveItem('${item.Artikelnummer}')" title="Reservierung aufheben" class="text-yellow-600 text-lg">🚫</button>`
-             : `
-             <button onclick="window.editItem('${item.Artikelnummer}')" title="Bearbeiten" class="text-blue-600 text-lg">✏️</button>
-             <button onclick="window.showDeleteConfirm('${item.Artikelnummer}')" title="Löschen" class="text-red-600 text-lg">🗑️</button>
-             `
-             }
-            </div>
-      
+    <!-- Правая часть: Кол-во и действия -->
+    <div class="flex flex-col items-end text-right flex-shrink-0 ml-2">
+      <div class="font-semibold text-base flex items-center gap-2 justify-end">
+        ${item.status === 'unavailable'
+          ? `<span class="text-base text-red-600">Auf Lager: ${item.stock ?? 0}</span>`
+          : ''
+        }
+        <span class="ml-2">× ${item.Menge}</span>
+      </div>
+      <div class="flex gap-1 mt-1">
+        ${
+          item.status === 'reserved'
+            ? `<button onclick="event.stopPropagation(); unreserveItem('${item.Artikelnummer}')" title="Reservierung aufheben" class="text-yellow-600 text-lg">🚫</button>`
+            : `
+              <button onclick="event.stopPropagation(); window.editItem('${item.Artikelnummer}')" title="Bearbeiten" class="text-blue-600 text-lg">✏️</button>
+              <button onclick="event.stopPropagation(); window.showDeleteConfirm('${item.Artikelnummer}')" title="Löschen" class="text-red-600 text-lg">🗑️</button>
+            `
+        }
+      </div>
     </div>
   </div>
   `
@@ -1551,15 +1563,19 @@ window.confirmClearUnavailable = function () {
   window.appState.modalOpen = false;
 };
 
-// === Обработка выделения карточек по тапу (визуальное выделение синим)
-window.toggleCartSelection = function (index) {
+
+window.toggleCartSelection = function(index) {
   const items = window.appState.selectedItems || [];
-  if (!items[index]) {
-    console.warn("❌ Неверный индекс:", index);
-    return;
-  }
+  if (!items[index]) return;
   items[index]._selected = !items[index]._selected;
-  console.log("✅ Переключил выделение для:", items[index]);
+  window.renderCart?.();
+}
+// === Обработка выделения карточек по тапу (визуальное выделение синим)
+window.toggleCartExpand = function(index) {
+  const items = window.appState.selectedItems || [];
+  if (!items[index]) return;
+  // Тогглим _selected: если уже раскрыто — скрываем, если нет — раскрываем
+  items[index]._selected = !items[index]._selected;
   window.renderCart?.();
 };
 
