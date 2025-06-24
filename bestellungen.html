@@ -173,7 +173,7 @@
       <script type="module">
         
         // авто менялка версии
-        window.appVersion = " 6.24"; // ← Меняешь только тут
+        window.appVersion = " 6.26"; // ← Меняешь только тут
 
         const FC64 = "TEFHRVIyMDI1"; 
 
@@ -920,8 +920,11 @@
 
       // 🆕 Если такого товара не было — добавляем как новый
       const existing = window.appState.selectedItems.find(
-        (i) => i.Artikelnummer === item.Artikelnummer
-      );
+        (i) =>
+            i.Artikelnummer === item.Artikelnummer &&
+            i.Artikelbezeichnung === item.Artikelbezeichnung &&
+            i.Ort === item.Ort
+        );
 
       if (existing) {
         existing.Menge += menge;
