@@ -1352,7 +1352,7 @@ cart.innerHTML = sortedItems
     const bgClass = getBgClassByStatus(item.status);
 
     return `
-  <div class="${bgClass} ${selectedClass} rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2" onclick="window.toggleCartSelection(${i})">
+  <div class="${bgClass} ${selectedClass} cart-card rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2" data-index="${i}">
   
     <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
       <!-- Первая строка -->
@@ -1447,6 +1447,15 @@ window.toggleCartSelection = function (index) {
   items[index]._selected = !items[index]._selected;
   window.renderCart?.();
 };
+
+// === Глобальный обработчик кликов по карточкам (тапы и клики)
+document.addEventListener("click", function (e) {
+  const card = e.target.closest(".cart-card");
+  if (!card || !card.dataset.index) return;
+  const index = parseInt(card.dataset.index, 10);
+  if (isNaN(index)) return;
+  window.toggleCartSelection(index);
+});
 //для Ios
 
 setTimeout(() => {
@@ -2307,6 +2316,7 @@ window.autoFillCart = function () {
   window.renderCart();
 };
   // Позже здесь будет логика подбора товаров до полной коробки.
+
 
 
 </script>
