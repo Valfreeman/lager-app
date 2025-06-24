@@ -159,7 +159,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.20"; // ← Меняешь только тут
+    window.appVersion = " 6.21"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -906,7 +906,6 @@ if (existingReservedItem) {
 window.renderCart = function () {
   const cart = document.getElementById("cartItems");
   const items = window.appState.selectedItems;
-
   if (!cart) return;
 
   if (items.length === 0) {
@@ -915,13 +914,13 @@ window.renderCart = function () {
     return;
   }
 
-  // Сортировка: сначала не reserved, потом reserved
+ /* // Сортировка: сначала не reserved, потом reserved
   const sortedItems = [...items].sort((a, b) => {
     if (a.status === 'reserved' && b.status !== 'reserved') return 1;
     if (a.status !== 'reserved' && b.status === 'reserved') return -1;
     return 0;
-  });
-
+  }); */ //всплытие разрезервированного
+  const sortedItems = [...items]; // отключена сортировка по статусу
 
   // 🧪 Вставка для логов:
   items.forEach((item, i) => {
@@ -1347,9 +1346,13 @@ for (const item of reservedItems) {
 //==========================
 console.log("Рендер корзины, пример item:", sortedItems && sortedItems[0]);
 cart.innerHTML = sortedItems
-  .map(
-    (item, i) => `
-  <div class="${getBgClassByStatus(item.status)} rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2">
+  .map((item, i) => {
+    const isSelected = item._selected;
+    const selectedClass = isSelected ? 'ring-4 ring-blue-400' : '';
+    const bgClass = getBgClassByStatus(item.status);
+
+    return `
+  <div class="${bgClass} ${selectedClass} rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2" onclick="window.toggleCartSelection(${i})">
   
     <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
       <!-- Первая строка -->
@@ -1391,7 +1394,7 @@ cart.innerHTML = sortedItems
     </div>
   </div>
   `
-  )
+})
   .join("");
   window.updateBoxInfo();
   window.updateCartButtons(window.appState.selectedItems);
@@ -1437,6 +1440,13 @@ window.editItem = function(artikelnummer) {
   }
 }, 200);
 
+// === Обработка выделения карточек по тапу (визуальное выделение синим)
+window.toggleCartSelection = function (index) {
+  const items = window.appState.selectedItems || [];
+  if (!items[index]) return;
+  items[index]._selected = !items[index]._selected;
+  window.renderCart?.();
+};
 //для Ios
 
 setTimeout(() => {
