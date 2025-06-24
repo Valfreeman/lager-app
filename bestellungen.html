@@ -159,7 +159,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.22"; // ← Меняешь только тут
+    window.appVersion = " 6.23"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -1353,7 +1353,7 @@ cart.innerHTML = sortedItems
 
     return `
   <div class="${bgClass} ${selectedClass} cart-card rounded-xl px-4 py-2 mb-2 flex justify-between items-start gap-2" data-index="${i}">
-  
+
     <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
       <!-- Первая строка -->
       <div class="text-sm text-gray-500 col-start-1 row-start-1">${item.Ort}</div>
@@ -1442,14 +1442,7 @@ window.editItem = function(artikelnummer) {
 
 
 
-// === Глобальный обработчик кликов по карточкам (тапы и клики)
-document.addEventListener("click", function (e) {
-  const card = e.target.closest(".cart-card");
-  if (!card || !card.dataset.index) return;
-  const index = parseInt(card.dataset.index, 10);
-  if (isNaN(index)) return;
-  window.toggleCartSelection(index);
-});
+
 //для Ios
 
 setTimeout(() => {
@@ -1569,6 +1562,15 @@ window.toggleCartSelection = function (index) {
   console.log("✅ Переключил выделение для:", items[index]);
   window.renderCart?.();
 };
+
+// === Глобальный обработчик кликов по карточкам (тапы и клики)
+document.addEventListener("click", function (e) {
+  const card = e.target.closest(".cart-card");
+  if (!card || !card.dataset.index) return;
+  const index = parseInt(card.dataset.index, 10);
+  if (isNaN(index)) return;
+  window.toggleCartSelection(index);
+});
 
 //=============================================================================
     // ========================
