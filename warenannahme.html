@@ -106,28 +106,25 @@
             // Оставляем пустым — подключится позже динамически
           </script>
 
-          <!-- Модальное окно для сканера штрихкодов -->
-          <div id="barcodeScannerModal" class="fixed inset-0 z-[1200] flex items-center justify-center bg-black bg-opacity-70 hidden">
-            <div class="relative bg-white rounded-2xl shadow-xl p-4 w-[360px] max-w-full flex flex-col items-center">
-              <h2 class="text-lg font-bold mb-4">📷 Barcode scannen</h2>
-              <div id="barcodeVideo"
+          <!-- Модальное окно для сканера цифр -->
+            <div id="barcodeScannerModal" class="fixed inset-0 z-[1200] flex items-center justify-center bg-black bg-opacity-70 hidden">
+                <div class="relative bg-white rounded-2xl shadow-xl p-4 w-[360px] max-w-full flex flex-col items-center">
+                <h2 class="text-lg font-bold mb-4">📷 Цифровой сканер</h2>
+                <div id="barcodeVideo"
                     class="mx-auto rounded-2xl overflow-hidden bg-gray-200"
                     style="width: 260px; height: 260px; max-width: 90vw; max-height: 70vw;">
                 </div>
-                    <div class="flex gap-2 mt-2 justify-center w-full">
-                        <!-- вот тут была только кнопка "Закрыть" -->
-                        <button id="scanBarcodeButton" class="flex-1 px-4 py-2 bg-blue-400 text-white rounded-xl hover:bg-blue-600 mt-2 mb-2">
-                          ▶️ Сканировать
-                        </button>
-                        <button id="photoOCRButton" class="flex-1 px-4 py-2 bg-green-400 text-white rounded-xl hover:bg-green-600 mt-2 mb-2">
-                            📷 Сделать фото и распознать
-                          </button>
-              
-                <button id="closeBarcodeScanner" class="flex-1 px-4 py-2 bg-gray-300 rounded-xl hover:bg-gray-400">❌ Закрыть</button>
-              </div>
-              <p class="text-xs text-gray-500 mt-2">Наведите камеру на штрихкод товара (EAN-13)</p>
+                <div class="flex gap-2 mt-2 justify-center w-full">
+                    <button id="photoOCRButton" class="flex-1 px-4 py-2 bg-green-400 text-white rounded-xl hover:bg-green-600 mt-2 mb-2">
+                    📷 Сделать фото и распознать
+                    </button>
+                    <button id="closeBarcodeScanner" class="flex-1 px-4 py-2 bg-gray-300 rounded-xl hover:bg-gray-400">
+                    ❌ Закрыть
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Наведите камеру на строку из 13 цифр</p>
+                </div>
             </div>
-          </div>
 
         </section>
 
@@ -847,135 +844,79 @@ document.addEventListener("DOMContentLoaded", function () {
     document.body.style.overflow = 'hidden';
   }
 
-  // Запуск сканера через html5-qrcode
+  // Включаем камеру через mediaDevices
   const videoElem = document.getElementById('barcodeVideo');
+  videoElem.innerHTML = ""; // очищаем от предыдущих потоков
   videoElem.style.display = 'block';
 
-  if (window._html5QrcodeScanner) {
-    window._html5QrcodeScanner.stop().then(() => {
-      window._html5QrcodeScanner.clear();
-      startQrcode();
-    });
-  } else {
-    startQrcode();
+  // Останавливаем предыдущий поток, если был
+  if (window._ocrStream) {
+    window._ocrStream.getTracks().forEach(track => track.stop());
+    window._ocrStream = null;
   }
 
-  function startQrcode() {
-    Html5Qrcode.getCameras().then(cameras => {
-      let camId = null;
-      if (cameras && cameras.length) {
-        const backCam = cameras.find(cam =>
-          /back|rear|environment/i.test(cam.label)
-        );
-        camId = backCam ? backCam.id : cameras[0].id;
-      }
-      if (!camId) {
-        alert("Не найдена камера");
-        window.closeBarcodeScanner();
-        return;
-      }
+  // Запрашиваем доступ к камере
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+    .then(stream => {
+      const video = document.createElement('video');
+      video.setAttribute('autoplay', '');
+      video.setAttribute('playsinline', '');
+      video.style.width = "100%";
+      video.style.height = "100%";
+      videoElem.appendChild(video);
 
-      window._html5QrcodeScanner = new Html5Qrcode("barcodeVideo");
+      video.srcObject = stream;
+      window._ocrStream = stream;
 
-      // Переменная для хранения последнего валидного кода
-      let lastValidCode = null;
-
-      window._html5QrcodeScanner.start(
-        camId,
-        { fps: 12, qrbox: 220 },
-        (decodedText, decodedResult) => {
-            console.log("СКАН (любой): ", decodedText);
-            if (/^\d{13}$/.test(decodedText)) {
-                lastValidCode = decodedText;
-                console.log("Последний валидный код: ", lastValidCode);
-            }
-            },
-        () => {}
-      );
-
-
-      //фотографирование и сканирование текста
-            const photoBtn = document.getElementById('photoOCRButton');
-        if (photoBtn) {
+      // Фотографирование и OCR-распознавание
+      const photoBtn = document.getElementById('photoOCRButton');
+      if (photoBtn) {
         photoBtn.onclick = function () {
-            // 1. Берём <video>
-            const video = document.querySelector('#barcodeVideo video');
-            if (!video) {
-            alert('Нет изображения с камеры!');
+          if (video.readyState !== 4) {
+            alert('Видео не готово');
             return;
-            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // 2. Создаём canvas по размеру видео
-            const canvas = document.createElement('canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          photoBtn.disabled = true;
+          photoBtn.innerText = "⏳ Распознаём...";
 
-            // 3. Показываем пользователю процесс (UX)
-            photoBtn.disabled = true;
-            photoBtn.innerText = "⏳ Распознаём...";
-
-            // 4. Передаём canvas в Tesseract
-            Tesseract.recognize(
+          Tesseract.recognize(
             canvas,
             'eng'
-            ).then(({ data: { text } }) => {
+          ).then(({ data: { text } }) => {
             photoBtn.disabled = false;
             photoBtn.innerText = "📷 Сделать фото и распознать";
-            // 5. Оставляем только 13 цифр подряд
-            const match = text.replace(/[^\d]/g,'').match(/\d{13}/);
+            const match = text.replace(/[^\d]/g, '').match(/\d{13}/);
             if (match) {
-                const code = match[0];
-                const input = document.getElementById('searchInput');
-                if (input) {
+              const code = match[0];
+              const input = document.getElementById('searchInput');
+              if (input) {
                 input.value = code;
                 input.dispatchEvent(new Event('input', { bubbles: true }));
-                }
-                photoBtn.innerText = "✅ Найдено: " + code;
-                setTimeout(() => {
+              }
+              photoBtn.innerText = "✅ Найдено: " + code;
+              setTimeout(() => {
                 photoBtn.innerText = "📷 Сделать фото и распознать";
-                }, 1200);
+              }, 1200);
             } else {
-                photoBtn.innerText = "❌ 13 цифр не найдено!";
-                setTimeout(() => {
+              photoBtn.innerText = "❌ 13 цифр не найдено!";
+              setTimeout(() => {
                 photoBtn.innerText = "📷 Сделать фото и распознать";
-                }, 1200);
+              }, 1200);
             }
-            });
-        };
-        }
-            // остальная часть сканирователя
-      const scanBtn = document.getElementById('scanBarcodeButton');
-      if (scanBtn) {
-        scanBtn.onclick = function () {
-            console.log("Нажата кнопка! lastValidCode=", lastValidCode);
-          if (lastValidCode) {
-            const input = document.getElementById('searchInput');
-            if (input) {
-              input.value = lastValidCode;
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-              console.log("Код подставлен в input:", lastValidCode);
-            }
-            scanBtn.innerText = "✅ Добавлено!";
-            setTimeout(() => {
-              scanBtn.innerText = "▶️ Сканировать";
-              // Можно сбросить lastValidCode, если нужно только по одному разу:
-              // lastValidCode = null;
-            }, 1000);
-          } else {
-            scanBtn.innerText = "❌ Нет кода";
-            setTimeout(() => {
-              scanBtn.innerText = "▶️ Сканировать";
-            }, 1000);
-          }
+          });
         };
       }
-    }).catch(() => {
+    })
+    .catch(() => {
       alert("Не удалось получить камеру");
       window.closeBarcodeScanner();
     });
-  }
 };
 
 
@@ -983,17 +924,19 @@ document.addEventListener("DOMContentLoaded", function () {
 //!!!!!!!!!!!!!!!!!!!!!
 // Кнопка "Закрыть" (добавь обработчик, если не было)
 window.closeBarcodeScanner = function () {
-  if (window._html5QrcodeScanner) {
-    window._html5QrcodeScanner.stop().then(() => {
-      window._html5QrcodeScanner.clear();
-      window._html5QrcodeScanner = null;
-    }).catch(() => {});
+  // Остановить поток камеры, если был запущен
+  if (window._ocrStream) {
+    window._ocrStream.getTracks().forEach(track => track.stop());
+    window._ocrStream = null;
   }
   const modal = document.getElementById('barcodeScannerModal');
   if (modal) modal.classList.add('hidden');
   document.body.style.overflow = '';
   const videoElem = document.getElementById('barcodeVideo');
-  if (videoElem) videoElem.style.display = 'none';
+  if (videoElem) {
+    videoElem.innerHTML = ""; // очищаем от video и canvas
+    videoElem.style.display = 'none';
+  }
 };
 
 
@@ -2716,7 +2659,7 @@ window.closeBarcodeScanner = function () {
 <!-- Tesseract.js-читалка текста -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
 <!-- html5-qrcode подключаем -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<!--<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>-->
 
 </body>
 </html>
