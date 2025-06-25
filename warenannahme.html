@@ -114,7 +114,13 @@
                     class="mx-auto rounded-2xl overflow-hidden bg-gray-200"
                     style="width: 260px; height: 260px; max-width: 90vw; max-height: 70vw;">
                 </div>
-              <div class="flex gap-2 mt-2 justify-center w-full">
+                    <div class="flex gap-2 mt-2 justify-center w-full">
+                        <!-- вот тут была только кнопка "Закрыть" -->
+                        <button id="scanBarcodeButton" class="flex-1 px-4 py-2 bg-blue-400 text-white rounded-xl hover:bg-blue-600 mt-2 mb-2">
+                          ▶️ Сканировать
+                        </button>
+                
+              
                 <button id="closeBarcodeScanner" class="flex-1 px-4 py-2 bg-gray-300 rounded-xl hover:bg-gray-400">❌ Закрыть</button>
               </div>
               <p class="text-xs text-gray-500 mt-2">Наведите камеру на штрихкод товара (EAN-13)</p>
@@ -843,7 +849,6 @@ document.addEventListener("DOMContentLoaded", function () {
   const videoElem = document.getElementById('barcodeVideo');
   videoElem.style.display = 'block';
 
-  // Если уже есть сканер — остановить!
   if (window._html5QrcodeScanner) {
     window._html5QrcodeScanner.stop().then(() => {
       window._html5QrcodeScanner.clear();
@@ -854,49 +859,71 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function startQrcode() {
-    window._html5QrcodeScanner = new Html5Qrcode("barcodeVideo");
-    console.log("Html5Qrcode создан:", window._html5QrcodeScanner);
     Html5Qrcode.getCameras().then(cameras => {
-      console.log("Список камер:", cameras);
-      // Поиск основной (тыловой) камеры
-        let camId = null;
-        if (cameras && cameras.length) {
-        // Ищем по слову "back" или "environment" (обычно так называется основная камера)
+      let camId = null;
+      if (cameras && cameras.length) {
         const backCam = cameras.find(cam =>
-            /back|rear|environment/i.test(cam.label)
+          /back|rear|environment/i.test(cam.label)
         );
         camId = backCam ? backCam.id : cameras[0].id;
-        }
+      }
       if (!camId) {
         alert("Не найдена камера");
         window.closeBarcodeScanner();
         return;
       }
+
+      window._html5QrcodeScanner = new Html5Qrcode("barcodeVideo");
+
+      // Переменная для хранения последнего валидного кода
+      let lastValidCode = null;
+
       window._html5QrcodeScanner.start(
         camId,
         { fps: 12, qrbox: 220 },
         (decodedText, decodedResult) => {
-          console.log("ДЕКОДИРОВАНО: ", decodedText);
-          if (/^\d{13}$/.test(decodedText)) {
+            console.log("СКАН (любой): ", decodedText);
+            if (/^\d{13}$/.test(decodedText)) {
+                lastValidCode = decodedText;
+                console.log("Последний валидный код: ", lastValidCode);
+            }
+            },
+        () => {}
+      );
+
+      const scanBtn = document.getElementById('scanBarcodeButton');
+      if (scanBtn) {
+        scanBtn.onclick = function () {
+            console.log("Нажата кнопка! lastValidCode=", lastValidCode);
+          if (lastValidCode) {
             const input = document.getElementById('searchInput');
             if (input) {
-              input.value = decodedText;
-              console.log("SCAN:", decodedText, "input:", input);
+              input.value = lastValidCode;
               input.dispatchEvent(new Event('input', { bubbles: true }));
+              console.log("Код подставлен в input:", lastValidCode);
             }
-            setTimeout(() => window.closeBarcodeScanner(), 200);
+            scanBtn.innerText = "✅ Добавлено!";
+            setTimeout(() => {
+              scanBtn.innerText = "▶️ Сканировать";
+              // Можно сбросить lastValidCode, если нужно только по одному разу:
+              // lastValidCode = null;
+            }, 1000);
+          } else {
+            scanBtn.innerText = "❌ Нет кода";
+            setTimeout(() => {
+              scanBtn.innerText = "▶️ Сканировать";
+            }, 1000);
           }
-        },
-        (errorMessage) => {
-          // можно добавить лог ошибок
-        }
-      );
+        };
+      }
     }).catch(() => {
       alert("Не удалось получить камеру");
       window.closeBarcodeScanner();
     });
   }
 };
+
+
 
 //!!!!!!!!!!!!!!!!!!!!!
 // Кнопка "Закрыть" (добавь обработчик, если не было)
