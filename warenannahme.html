@@ -119,7 +119,9 @@
                         <button id="scanBarcodeButton" class="flex-1 px-4 py-2 bg-blue-400 text-white rounded-xl hover:bg-blue-600 mt-2 mb-2">
                           ▶️ Сканировать
                         </button>
-                
+                        <button id="photoOCRButton" class="flex-1 px-4 py-2 bg-green-400 text-white rounded-xl hover:bg-green-600 mt-2 mb-2">
+                            📷 Сделать фото и распознать
+                          </button>
               
                 <button id="closeBarcodeScanner" class="flex-1 px-4 py-2 bg-gray-300 rounded-xl hover:bg-gray-400">❌ Закрыть</button>
               </div>
@@ -200,7 +202,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.27 развилка"; // ← Меняешь только тут
+    window.appVersion = " 6.28 развилка тессеракт"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -891,6 +893,59 @@ document.addEventListener("DOMContentLoaded", function () {
         () => {}
       );
 
+
+      //фотографирование и сканирование текста
+            const photoBtn = document.getElementById('photoOCRButton');
+        if (photoBtn) {
+        photoBtn.onclick = function () {
+            // 1. Берём <video>
+            const video = document.querySelector('#barcodeVideo video');
+            if (!video) {
+            alert('Нет изображения с камеры!');
+            return;
+            }
+
+            // 2. Создаём canvas по размеру видео
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // 3. Показываем пользователю процесс (UX)
+            photoBtn.disabled = true;
+            photoBtn.innerText = "⏳ Распознаём...";
+
+            // 4. Передаём canvas в Tesseract
+            Tesseract.recognize(
+            canvas,
+            'eng'
+            ).then(({ data: { text } }) => {
+            photoBtn.disabled = false;
+            photoBtn.innerText = "📷 Сделать фото и распознать";
+            // 5. Оставляем только 13 цифр подряд
+            const match = text.replace(/[^\d]/g,'').match(/\d{13}/);
+            if (match) {
+                const code = match[0];
+                const input = document.getElementById('searchInput');
+                if (input) {
+                input.value = code;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                photoBtn.innerText = "✅ Найдено: " + code;
+                setTimeout(() => {
+                photoBtn.innerText = "📷 Сделать фото и распознать";
+                }, 1200);
+            } else {
+                photoBtn.innerText = "❌ 13 цифр не найдено!";
+                setTimeout(() => {
+                photoBtn.innerText = "📷 Сделать фото и распознать";
+                }, 1200);
+            }
+            });
+        };
+        }
+            // остальная часть сканирователя
       const scanBtn = document.getElementById('scanBarcodeButton');
       if (scanBtn) {
         scanBtn.onclick = function () {
@@ -2658,9 +2713,10 @@ window.closeBarcodeScanner = function () {
   🔩 Alle Rechte an Muttern und Schrauben vorbehalten :) 
 </footer>
 <script src="firebase-setup.js" type="module"></script>
+<!-- Tesseract.js-читалка текста -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.3/dist/tesseract.min.js"></script>
 <!-- html5-qrcode подключаем -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-
 
 </body>
 </html>
