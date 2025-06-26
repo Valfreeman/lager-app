@@ -93,7 +93,11 @@
             onclick="window.toggleAuthForm()">
           Bereits registriert? Einloggen
         </div>
+        <div class="w-full text-center mt-2 mb-0">
         <p id="registerStatus" class="mt-2 text-sm text-gray-500"></p>
+        <p class="text-xs text-gray-500 mt-2">(Tipp) Sie können auch eine nicht existierende E-Mail-Adresse benutzen! ;)</p> 
+        <p class="text-xs text-gray-500 mt-2">Hauptsache, Sie vergessen sie nicht. :)</p> 
+    </div>
       </section>
 
 
@@ -151,10 +155,10 @@
                             border:1.5px dashed #B0B0B0;z-index:3;pointer-events:none;"></div>
                     </div>
                     <div class="flex gap-2 w-full justify-center items-center mt-2 mb-0">
-               <!--         <button id="photoOCRButton"
-                          class="px-3 py-1.5 text-sm bg-green-400 text-white rounded-lg hover:bg-green-600 min-w-[80px]">
+                   <!--       <button id="photoOCRButton"
+                        class="px-3 py-1.5 text-sm bg-green-400 text-white rounded-lg hover:bg-green-600 min-w-[80px]">
                           X
-                        </button>-->
+                        </button> -->
                         <button id="switchCameraButton"
                           class="px-3 py-1.5 text-sm bg-blue-400 text-white rounded-lg hover:bg-blue-600 min-w-[80px]">
                           Kamera wechseln
@@ -932,7 +936,15 @@ document.addEventListener("DOMContentLoaded", function () {
         camId,
         { fps: 12, qrbox: 220 },
         (decodedText, decodedResult) => {
-          // ... 
+          if (!decodedText) return;
+          const found = window.artikelListe?.find?.(item => {
+            const a = String(item.Artikelnummer).replace(/\s/g,'').trim();
+            const b = String(decodedText).replace(/\s/g,'').trim();
+            if (a === b) return true;
+            return false;
+          });
+          if (!found) return;
+          window.openMengeModal(found);
         },
         (errorMessage) => { /* ignore */ }
       ).then(() => {
