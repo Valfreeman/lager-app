@@ -164,7 +164,8 @@
                         Schließen
                         </button>
                         </div>
-                <p class="text-xs text-gray-500 mt-2">Richten Sie die Kamera auf eine 13-stellige Zahlenreihe</p> 
+                <p class="text-xs text-gray-500 mt-2">Richten Sie die Kamera auf eine 13-stellige Zahlenreihe</p>
+                <p class="text-xs text-gray-500 mt-2">Vergessen Sie nicht, diesem wunderbaren Menschen zu lächeln.</p> 
                 </div>
             </div>
 
@@ -241,7 +242,7 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.35"; // ← Меняешь только тут
+    window.appVersion = " 6.36"; // ← Меняешь только тут
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -914,70 +915,60 @@ document.addEventListener("DOMContentLoaded", function () {
     // Поднимаем флаг только здесь, перед стартом нового сканера
     let started = false;
     window._html5QrcodeScanner = new Html5Qrcode("barcodeVideo");
-    // --- Шаг 2. Поддержка переключения камеры ---
-if (!window._qrCameras) window._qrCameras = [];
-if (typeof window._qrCurrentCamIndex !== 'number') window._qrCurrentCamIndex = 0;
+    if (!window._qrCameras) window._qrCameras = [];
+    if (typeof window._qrCurrentCamIndex !== 'number') window._qrCurrentCamIndex = 0;
 
-Html5Qrcode.getCameras().then(cameras => {
-  window._qrCameras = cameras || [];
-  if (!cameras.length) throw new Error("Не найдена ни одна камера!");
+    await Html5Qrcode.getCameras().then(async cameras => {
+      window._qrCameras = cameras || [];
+      if (!cameras.length) throw new Error("Не найдена ни одна камера!");
 
-  // Выбираем камеру по индексу (по умолчанию тыльная, иначе по индексу)
-  if (typeof window._qrCurrentCamIndex !== 'number' || window._qrCurrentCamIndex >= cameras.length) {
-    window._qrCurrentCamIndex = 0;
-  }
+      if (typeof window._qrCurrentCamIndex !== 'number' || window._qrCurrentCamIndex >= cameras.length) {
+        window._qrCurrentCamIndex = 0;
+      }
 
-  let camId = cameras[window._qrCurrentCamIndex].id;
+      let camId = cameras[window._qrCurrentCamIndex].id;
 
-  // --- Сам запуск QR ---
-  window._html5QrcodeScanner.start(
-    camId,
-    { fps: 12, qrbox: 220 },
-    (decodedText, decodedResult) => {
-      if (!decodedText) return;
-      const found = window.artikelListe?.find?.(item => {
-        const a = String(item.Artikelnummer).replace(/\s/g,'').trim();
-        const b = String(decodedText).replace(/\s/g,'').trim();
-        if (a === b) return true;
-        return false;
+      await window._html5QrcodeScanner.start(
+        camId,
+        { fps: 12, qrbox: 220 },
+        (decodedText, decodedResult) => {
+          // ... 
+        },
+        (errorMessage) => { /* ignore */ }
+      ).then(() => {
+        started = true;
+        window._qrTransitioning = false;
+        if (openBtn) openBtn.disabled = false;
+      }).catch(err => {
+        window._qrTransitioning = false;
+        if (openBtn) openBtn.disabled = false;
+        alert("Ошибка запуска сканера: " + (err?.message || err));
+        window.closeBarcodeScanner();
       });
-      if (!found) return;
-      window.openMengeModal(found);
-    },
-    (errorMessage) => { /* ignore */ }
-  ).then(() => {
-    started = true;
-    window._qrTransitioning = false;
-    if (openBtn) openBtn.disabled = false;
-  }).catch(err => {
-    window._qrTransitioning = false;
-    if (openBtn) openBtn.disabled = false;
-    alert("Ошибка запуска сканера: " + (err?.message || err));
-    window.closeBarcodeScanner();
-  });
 
-  // === Вешаем обработчик на кнопку "Kamera wechseln" ===
-  const switchBtn = document.getElementById('switchCameraButton');
-  if (switchBtn) {
-    switchBtn.onclick = async function () {
-      // Останавливаем текущий сканер
-      try {
-        if (window._html5QrcodeScanner) {
-          await window._html5QrcodeScanner.stop();
-          await window._html5QrcodeScanner.clear();
-        }
-      } catch (e) {}
-      window._html5QrcodeScanner = null;
+      const switchBtn = document.getElementById('switchCameraButton');
+      if (switchBtn) {
+        switchBtn.onclick = async function () {
+          try {
+            if (window._html5QrcodeScanner) {
+              await window._html5QrcodeScanner.stop();
+              await window._html5QrcodeScanner.clear();
+            }
+          } catch (e) {}
+          window._html5QrcodeScanner = null;
+          window._qrCurrentCamIndex = (window._qrCurrentCamIndex + 1) % cameras.length;
+          window.openQRScanner();
+        };
+      }
+    }).catch(err => {
+      window._qrTransitioning = false;
+      if (openBtn) openBtn.disabled = false;
+      alert("Не удалось получить камеру");
+      window.closeBarcodeScanner();
+    });
+    // <<-- ЭТА СКОБКА ЗАКРЫВАЕТ .then().catch()
 
-      // Переключаем индекс камеры по кругу
-      window._qrCurrentCamIndex = (window._qrCurrentCamIndex + 1) % cameras.length;
-
-      // Перезапускаем openQRScanner
-      window.openQRScanner();
-    };
-  }
-
-})} catch (err) {
+  } catch (err) {
     window._qrTransitioning = false;
     const openBtn = document.getElementById('openQRButton');
     if (openBtn) openBtn.disabled = false;
@@ -1651,9 +1642,9 @@ return `
 
     <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
       <!-- Первая строка -->
-      <div class="text-sm text-gray-500 col-start-1 row-start-1 flex justify-center items-center">${item.Ort}</div>
+      <div class="text-lg text-gray-800 col-start-1 font-semibold row-start-1 flex justify-center items-center">${item.Ort}</div>
       <div class="col-start-2 row-start-1 w-4 h-px"></div>
-      <div class="text-sm text-gray-500 col-start-3 row-start-1">
+      <div class="text-lg text-gray-800 font-semibold col-start-3 row-start-1">
         ${String(item.Artikelnummer || '').trim().match(/^\d/) ? window.formatArtikelnummer(item.Artikelnummer) : '—'}
       </div>
       <!-- Вторая строка -->
@@ -1663,7 +1654,7 @@ return `
       <div class="col-start-2 row-start-2 w-4 h-px"></div>
       <div class="col-start-3 row-start-2 flex items-center gap-2 min-w-0">
         <span 
-          class="text-lg text-gray-800 font-semibold hyphenated min-w-0 cursor-pointer"
+          class="text-lg text-gray-800 hyphenated min-w-0 cursor-pointer"
           style="max-width:100%; ${(item._expanded ? 'white-space:normal; word-break:break-word; hyphens:auto;' : 'text-overflow: ellipsis; overflow: hidden; white-space: nowrap; direction: ltr;')}"
           title="${item.Artikelbezeichnung || ''}"
           onclick="window.toggleCartExpand('${key}'); event.stopPropagation();"
@@ -2163,8 +2154,8 @@ window.addMoreItems = function () {
   window.appState.selectedItem = item;
 
   modal.innerHTML = `
-  <div id="mengeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-  <div class="bg-white rounded-2xl p-6 shadow-xl text-center">
+  <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2" style="margin-top:-200px;">
+    <h2 class="text-xl font-bold">Artikel hinzufügen</h2>
     <div class="text-left px-2">
       <p class="text-sm text-gray-500">${item.Artikelnummer}</p>
       <p class="text-lg text-gray-800 font-semibold">${item.Artikelbezeichnung}</p>
