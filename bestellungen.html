@@ -49,7 +49,7 @@
     <h1 class="text-2xl font-bold text-center w-full">📦 Lager App v<span id="ver"></span></h1>
     <div class="absolute top-0 right-0 ">
       <button class="text-gray-600 text-2xl" onclick="window.toggleMenu()">⋮</button>
-      <div class="absolute right-0 mt-2 w-48 bg-white border rounded-xl shadow-lg hidden z-60" id="menu">
+      <div class="absolute right-0 mt-2 w-48 bg-white border rounded-xl shadow-lg hidden z-100" id="menu">
         <button class="block w-full text-left px-4 py-2 hover:bg-gray-100" onclick="window.location.href='index.html'">🔍 Waren Suche</button>
         <button class="block w-full text-left px-4 py-2 hover:bg-gray-100" onclick="window.location.href='bestellungen.html'">📄 Bestellungen</button>
         <button class="block w-full text-left px-4 py-2 hover:bg-gray-100" onclick="window.location.href='warenannahme.html'">📦 Warenannahme</button>
@@ -155,12 +155,16 @@
                         class="flex-1 min-w-0 px-4 py-2 bg-green-400 text-white rounded-xl hover:bg-green-600 whitespace-nowrap min-h-12">
                         Foto erkennen
                         </button>
+                        <button id="switchCameraButton"
+                          class="flex-1 min-w-0 px-4 py-2 bg-blue-400 text-white rounded-xl hover:bg-blue-600 whitespace-nowrap min-h-12">
+                          Kamera wechseln
+                        </button>
                         <button id="closeBarcodeScanner"
                         class="flex-1 min-w-0 px-4 py-2 bg-gray-300 rounded-xl hover:bg-gray-400 whitespace-nowrap min-h-12">
                         Schließen
                         </button>
                         </div>
-                <p class="text-xs text-gray-500 mt-2">Richten Sie die Kamera auf eine 13-stellige Zahlenreihe</p>
+                <p class="text-xs text-gray-500 mt-2">Richten Sie die Kamera auf eine 13-stellige Zahlenreihe</p> 
                 </div>
             </div>
 
@@ -910,52 +914,70 @@ document.addEventListener("DOMContentLoaded", function () {
     // Поднимаем флаг только здесь, перед стартом нового сканера
     let started = false;
     window._html5QrcodeScanner = new Html5Qrcode("barcodeVideo");
-    Html5Qrcode.getCameras().then(cameras => {
-      let camId = null;
-      if (cameras && cameras.length) {
-        const backCam = cameras.find(cam =>
-          /back|rear|environment/i.test(cam.label)
-        );
-        camId = backCam ? backCam.id : cameras[0].id;
-      }
-      if (!camId) {
-        alert("Не найдена камера");
-        window.closeBarcodeScanner();
-        return;
-      }
-      window._html5QrcodeScanner.start(
-        camId,
-        { fps: 12, qrbox: 220 },
-        (decodedText, decodedResult) => {
-          if (!decodedText) return;
-          const found = window.artikelListe?.find?.(item => {
-            const a = String(item.Artikelnummer).replace(/\s/g,'').trim();
-            const b = String(decodedText).replace(/\s/g,'').trim();
-            if (a === b) return true;
-            return false;
-          });
-          if (!found) return;
-          window.openMengeModal(found);
-        },
-        (errorMessage) => { /* ignore */ }
-      ).then(() => {
-        started = true;
-        window._qrTransitioning = false;
-        if (openBtn) openBtn.disabled = false;
-      }).catch(err => {
-        window._qrTransitioning = false;
-        if (openBtn) openBtn.disabled = false;
-        alert("Ошибка запуска сканера: " + (err?.message || err));
-        window.closeBarcodeScanner();
-      });
-    }).catch(err => {
-      window._qrTransitioning = false;
-      if (openBtn) openBtn.disabled = false;
-      alert("Не удалось получить камеру");
-      window.closeBarcodeScanner();
-    });
+    // --- Шаг 2. Поддержка переключения камеры ---
+if (!window._qrCameras) window._qrCameras = [];
+if (typeof window._qrCurrentCamIndex !== 'number') window._qrCurrentCamIndex = 0;
 
-  } catch (err) {
+Html5Qrcode.getCameras().then(cameras => {
+  window._qrCameras = cameras || [];
+  if (!cameras.length) throw new Error("Не найдена ни одна камера!");
+
+  // Выбираем камеру по индексу (по умолчанию тыльная, иначе по индексу)
+  if (typeof window._qrCurrentCamIndex !== 'number' || window._qrCurrentCamIndex >= cameras.length) {
+    window._qrCurrentCamIndex = 0;
+  }
+
+  let camId = cameras[window._qrCurrentCamIndex].id;
+
+  // --- Сам запуск QR ---
+  window._html5QrcodeScanner.start(
+    camId,
+    { fps: 12, qrbox: 220 },
+    (decodedText, decodedResult) => {
+      if (!decodedText) return;
+      const found = window.artikelListe?.find?.(item => {
+        const a = String(item.Artikelnummer).replace(/\s/g,'').trim();
+        const b = String(decodedText).replace(/\s/g,'').trim();
+        if (a === b) return true;
+        return false;
+      });
+      if (!found) return;
+      window.openMengeModal(found);
+    },
+    (errorMessage) => { /* ignore */ }
+  ).then(() => {
+    started = true;
+    window._qrTransitioning = false;
+    if (openBtn) openBtn.disabled = false;
+  }).catch(err => {
+    window._qrTransitioning = false;
+    if (openBtn) openBtn.disabled = false;
+    alert("Ошибка запуска сканера: " + (err?.message || err));
+    window.closeBarcodeScanner();
+  });
+
+  // === Вешаем обработчик на кнопку "Kamera wechseln" ===
+  const switchBtn = document.getElementById('switchCameraButton');
+  if (switchBtn) {
+    switchBtn.onclick = async function () {
+      // Останавливаем текущий сканер
+      try {
+        if (window._html5QrcodeScanner) {
+          await window._html5QrcodeScanner.stop();
+          await window._html5QrcodeScanner.clear();
+        }
+      } catch (e) {}
+      window._html5QrcodeScanner = null;
+
+      // Переключаем индекс камеры по кругу
+      window._qrCurrentCamIndex = (window._qrCurrentCamIndex + 1) % cameras.length;
+
+      // Перезапускаем openQRScanner
+      window.openQRScanner();
+    };
+  }
+
+})} catch (err) {
     window._qrTransitioning = false;
     const openBtn = document.getElementById('openQRButton');
     if (openBtn) openBtn.disabled = false;
@@ -963,7 +985,6 @@ document.addEventListener("DOMContentLoaded", function () {
     window.closeBarcodeScanner();
   }
 };
-
 
 
 /// ===========================
@@ -2142,8 +2163,8 @@ window.addMoreItems = function () {
   window.appState.selectedItem = item;
 
   modal.innerHTML = `
-  <div class="bg-white rounded-2xl p-6 w-80 space-y-4 shadow-lg text-center mx-2" style="margin-top:-200px;">
-    <h2 class="text-xl font-bold">Artikel hinzufügen</h2>
+  <div id="mengeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="bg-white rounded-2xl p-6 shadow-xl text-center">
     <div class="text-left px-2">
       <p class="text-sm text-gray-500">${item.Artikelnummer}</p>
       <p class="text-lg text-gray-800 font-semibold">${item.Artikelbezeichnung}</p>
