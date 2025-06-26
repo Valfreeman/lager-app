@@ -150,20 +150,20 @@
                             style="position:absolute;left:10%;width:80%;top:48%;height:4%;background:rgba(255,255,255,0.19);border-radius:4px;
                             border:1.5px dashed #B0B0B0;z-index:3;pointer-events:none;"></div>
                     </div>
-                        <div class="flex gap-2 w-full mt-2 mb-0 items-stretch">
+                    <div class="flex gap-2 w-full justify-center items-center mt-2 mb-0">
                         <button id="photoOCRButton"
-                        class="flex-1 min-w-0 px-4 py-2 bg-green-400 text-white rounded-xl hover:bg-green-600 whitespace-nowrap min-h-12">
-                        Foto erkennen
+                          class="px-3 py-1.5 text-sm bg-green-400 text-white rounded-lg hover:bg-green-600 min-w-[80px]">
+                          X
                         </button>
                         <button id="switchCameraButton"
-                          class="flex-1 min-w-0 px-4 py-2 bg-blue-400 text-white rounded-xl hover:bg-blue-600 whitespace-nowrap min-h-12">
+                          class="px-3 py-1.5 text-sm bg-blue-400 text-white rounded-lg hover:bg-blue-600 min-w-[80px]">
                           Kamera wechseln
                         </button>
                         <button id="closeBarcodeScanner"
-                        class="flex-1 min-w-0 px-4 py-2 bg-gray-300 rounded-xl hover:bg-gray-400 whitespace-nowrap min-h-12">
-                        Schließen
+                          class="px-3 py-1.5 text-sm bg-gray-300 rounded-lg hover:bg-gray-400 min-w-[80px]">
+                          Schließen
                         </button>
-                        </div>
+                      </div>
                 <p class="text-xs text-gray-500 mt-2">Richten Sie die Kamera auf eine 13-stellige Zahlenreihe</p>
                 <p class="text-xs text-gray-500 mt-2">Vergessen Sie nicht, diesem wunderbaren Menschen zu lächeln.</p> 
                 </div>
@@ -1603,7 +1603,7 @@ for (const item of reservedItems) {
   window.renderCart();
   window.updateCartButtons([]);
 
-  // ✅ Сообщение
+  // ✅ Сообщение лифершайн
     const modal = document.getElementById("confirmationModals");
     if (modal) {
     modal.innerHTML = `
@@ -1642,7 +1642,7 @@ return `
 
     <div class="grid grid-cols-[56px_16px_1fr] gap-y-1">
       <!-- Первая строка -->
-      <div class="text-lg text-gray-800 col-start-1 font-semibold row-start-1 flex justify-center items-center">${item.Ort}</div>
+      <div class="text-lg text-gray-500 col-start-1 font-semibold row-start-1 flex justify-center items-center">${item.Ort}</div>
       <div class="col-start-2 row-start-1 w-4 h-px"></div>
       <div class="text-lg text-gray-800 font-semibold col-start-3 row-start-1">
         ${String(item.Artikelnummer || '').trim().match(/^\d/) ? window.formatArtikelnummer(item.Artikelnummer) : '—'}
