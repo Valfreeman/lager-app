@@ -154,7 +154,7 @@
                             style="position:absolute;left:10%;width:80%;top:48%;height:4%;background:rgba(255,255,255,0.19);border-radius:4px;
                             border:1.5px dashed #B0B0B0;z-index:3;pointer-events:none;"></div>
                     </div>
-                   <div class="flex justify-between gap-4 w-full mt-2 mb-0 px-2">
+                    <div class="flex justify-between gap-4 w-full mt-2 mb-0 px-2">
                         <button id="switchCameraButton"
                           class="w-36 px-3 py-1.5 text-sm bg-blue-400 text-white rounded-lg hover:bg-blue-600 text-center">
                           Kamera wechseln
@@ -242,7 +242,11 @@
   <script type="module">
     
     // авто менялка версии
-    window.appVersion = " 6.37"; // ← Меняешь только тут
+    
+    window.appVersion = " 6.39"; // ← Меняешь только тут
+
+
+    
 
     const FC64 = "TEFHRVIyMDI1"; 
 
@@ -301,6 +305,21 @@ document.addEventListener("click", function (e) {
   };
 
 
+//=============================================================================
+// ===  попытка отрендерить из корзину.
+//=============================================================================
+if (!window.appState) window.appState = {};
+    // === 1. Сразу пробуем отрендерить из кеша, если есть ===
+        const cached = JSON.parse(localStorage.getItem("artikelListe") || "[]");
+        if (cached.length) {
+        window.appState.artikelListe = cached;
+        window.artikelListe = cached;
+        window.isCatalogReady = true;
+        window.tryRestoreCart();
+        // (!) ВАЖНО: вызови свою функцию рендера товаров, например:
+        //renderArtikelListe(); // <-- здесь название своей функции!
+        console.info("📦 Render aus Cache!", cached.length, "Einträge");
+        }
 
     // ================================
     // 🧭 JS 0. Хедер и Навигация
@@ -2419,7 +2438,62 @@ window.confirmAddReservedItem = async function () {
     // ========================
     // 🌐 JS 10.1 Загрузка данных из Google Таблицы
     // ========================
-    
+
+    const VERSION_URL = "https://script.google.com/macros/s/AKfycbwf6GvWiUAgI36Jj8lKmcid8u2L4sdPfYoTtKBc-b08eDgVXi9qu5F4W_nJY8trEmo/exec?versiononly=1";
+        const DATA_URL = "https://script.google.com/macros/s/AKfycbwf6GvWiUAgI36Jj8lKmcid8u2L4sdPfYoTtKBc-b08eDgVXi9qu5F4W_nJY8trEmo/exec";
+
+        // 1. Проверяем кеш
+      //  const cached = JSON.parse(localStorage.getItem("artikelListe") || "[]");
+        const cachedVersion = localStorage.getItem("artikelVersion");
+
+        // 2. Проверяем версию на сервере
+        fetch(VERSION_URL)
+        .then(res => res.json())
+        .then(remote => {
+            if (cachedVersion !== remote.version || cached.length === 0) {
+            // Версия изменилась — грузим свежие данные
+            fetch(DATA_URL)
+                .then(res => res.json())
+                .then(newData => {
+                localStorage.setItem("artikelListe", JSON.stringify(newData));
+                localStorage.setItem("artikelVersion", remote.version);
+                window.appState.artikelListe = newData;
+                window.artikelListe = newData;
+                console.info("📥 Google Tabelle geladen:", newData.length, "Einträge (aktualisiert)");
+                window.isCatalogReady = true;
+                window.tryRestoreCart();
+                })
+                .catch(err => {
+                console.error("❌ Fehler beim Laden der Google Tabelle:", err);
+                showNotification("❌ Fehler beim Laden der Artikelliste");
+                });
+            } else {
+            // Всё актуально — берём из кеша
+            window.appState.artikelListe = cached;
+            window.artikelListe = cached;
+            window.isCatalogReady = true;
+            window.tryRestoreCart();
+            console.info("📦 Google Tabelle aus Cache:", cached.length, "Einträge");
+            }
+        })
+        .catch((err) => {
+            console.error("❌ Fehler beim Laden der Artikellisten-Version:", err);
+            showNotification("❌ Fehler beim Laden der Artikellisten-Version");
+        });
+
+        // Универсальная функция для вывода ошибок (можешь оставить свою)
+        function showNotification(msg) {
+        const notification = document.getElementById("notificationArea");
+        if (notification) {
+            notification.textContent = msg;
+            notification.classList.remove("hidden");
+            setTimeout(() => notification.classList.add("hidden"), 4000);
+        }
+        }
+
+
+    /*
+    https://script.google.com/macros/s/AKfycbxrBEomhxhW1Fuwha26upnnpiVxDbFFunjgda0ChOPj6tKpwo5dZAOXJRKaux3sjpg/exec
     const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbzKtilIhFbMNl5zlQL5XsQHI7WPKnTNmgzh3xgniyPx49pJJ1OjwbfuViFm86y0zYQ/exec";
     
     fetch(GOOGLE_SHEET_URL)
@@ -2440,7 +2514,7 @@ window.confirmAddReservedItem = async function () {
         setTimeout(() => notification.classList.add("hidden"), 4000);
     }
   });
-
+*/
 
 // window.renderCart(); // начальная отрисовка при запуске
 //менялка версии
@@ -2758,6 +2832,8 @@ window.showMengeModal = function (artikelnummer, item) {
 */
 
 </script>
+
+
 
 <!-- 
 //=============================================================================
